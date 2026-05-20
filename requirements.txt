@@ -1,0 +1,23 @@
+# Laptop Price Prediction Project Dependencies
+# Python 3.8+
+
+# Data manipulation and analysis
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Machine learning and preprocessing
+scikit-learn>=1.2.0
+
+# Data visualization
+matplotlib>=3.6.0
+
+# Fuzzy string matching for CPU/GPU name normalization
+rapidfuzz>=3.0.0
+
+# Jupyter notebook environment
+jupyter>=1.0.0
+jupyterlab>=3.6.0
+
+# Optional: for advanced visualizations and modeling
+plotly>=5.0.0
+xgboost>=2.0.0
