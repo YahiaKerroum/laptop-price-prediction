@@ -167,6 +167,19 @@ make verify       # repo vs the original project folder
 `make notebooks` writes executed copies and per-notebook logs to `reports/executed/`.
 A failure there is a reproducibility regression, not a warning.
 
+### Runtime
+
+`make notebooks` takes **over an hour**, and almost all of it is
+`04_regression.ipynb`. That notebook's original hyperparameter search is a
+576-candidate LightGBM grid at 5 folds — 2,880 fits — plus a 250-fit random
+search for Random Forest and two XGBoost grids, all on ~9,300 rows.
+
+The search space is not worth its cost: the tuned models land within noise of each other, and
+the package's own `make train` fits the shipped model, three quantile models and two
+comparison models in under a minute. The grids are left as they were because notebooks 01–08
+exist to reproduce the original work, not to improve on it. Replacing `GridSearchCV` with
+Optuna is [`roadmap.md`](roadmap.md) §4a.
+
 ### Notebook bugs fixed to make this pass
 
 | Notebook | Bug |
