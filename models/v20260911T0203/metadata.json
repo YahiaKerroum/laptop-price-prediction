@@ -1,0 +1,221 @@
+{
+  "version": "v20260911T0203",
+  "trained_at": "2026-09-11T02:03:18+00:00",
+  "git_sha": "unknown",
+  "package_version": "1.0.0",
+  "python_version": "3.11.16",
+  "sklearn_version": "1.5.2",
+  "features": {
+    "numeric": [
+      "RAM_SIZE",
+      "SSD_SIZE",
+      "HDD_SIZE",
+      "RAM_TYPE",
+      "cores",
+      "cpu_mark",
+      "tdp",
+      "gpu_g3d_mark",
+      "gpu_g2d_mark",
+      "gpu_tdp",
+      "SCREEN_SIZE_SNAPPED",
+      "SCREEN_RESOLUTION_ENC",
+      "cpu_generation_normalized",
+      "spec_Etat",
+      "gpu_to_cpu_ratio",
+      "storage_per_ram",
+      "total_storage",
+      "pixels",
+      "ppi",
+      "total_tdp",
+      "perf_per_expected_dinar",
+      "estimated_component_cost",
+      "listing_year",
+      "listing_month",
+      "listing_month_index",
+      "month_sin",
+      "month_cos",
+      "etat_is_missing",
+      "has_hdd",
+      "is_dual_drive",
+      "has_dedicated_gpu",
+      "model_family"
+    ],
+    "categorical": [
+      "brand",
+      "city_grouped",
+      "cpu_manufacturer",
+      "cpu_family"
+    ]
+  },
+  "target": "price_corrected",
+  "n_train": 13004,
+  "n_test": 3251,
+  "split": "stratified_random (artifact); all splits reported in metrics",
+  "metrics": {
+    "final": {
+      "model": "final",
+      "n": 3251,
+      "R2": 0.8279375864449737,
+      "MAE": 18997.54462182181,
+      "RMSE": 39233.52651882891,
+      "MAPE": 18.675857371215198,
+      "MedAPE": 10.80546942382536,
+      "within_10pct": 46.69332513072901,
+      "within_20pct": 74.56167333128269
+    },
+    "final_excluding_unit_ambiguous": {
+      "model": "final (unit-ambiguous rows excluded)",
+      "n": 3202,
+      "R2": 0.8278424342059791,
+      "MAE": 18910.078136919958,
+      "RMSE": 39240.11081972512,
+      "MAPE": 18.72028764906311,
+      "MedAPE": 10.763986122884782,
+      "within_10pct": 46.78326046221112,
+      "within_20pct": 74.578388507183
+    },
+    "headline_time_based": {
+      "model": "HistGradientBoosting [time_based]",
+      "n": 10816,
+      "R2": 0.8097101470824304,
+      "MAE": 21318.713741342715,
+      "RMSE": 42911.30887213524,
+      "MAPE": 19.48201255757716,
+      "MedAPE": 12.208553001890433,
+      "within_10pct": 42.12278106508875,
+      "within_20pct": 70.48816568047337
+    },
+    "prediction_interval": {
+      "coverage_pct": 72.62380805905875,
+      "mean_width": 47386.41826579372,
+      "median_width": 34648.26722013665,
+      "median_relative_width": 36.19740346191194
+    },
+    "all_splits": [
+      {
+        "model": "baseline: global median [time_based]",
+        "n": 10816,
+        "R2": -0.10686664137243396,
+        "MAE": 63032.81240846893,
+        "RMSE": 103493.14763174446,
+        "MAPE": 59.41102787630039,
+        "MedAPE": 42.138364779874216,
+        "within_10pct": 12.57396449704142,
+        "within_20pct": 23.982988165680474
+      },
+      {
+        "model": "baseline: median of identical spec [time_based]",
+        "n": 10816,
+        "R2": 0.07378116651178757,
+        "MAE": 51193.99768953402,
+        "RMSE": 94671.82520158343,
+        "MAPE": 47.039082125096,
+        "MedAPE": 27.77777777777778,
+        "within_10pct": 23.62241124260355,
+        "within_20pct": 41.04105029585799
+      },
+      {
+        "model": "baseline: component cost sum [time_based]",
+        "n": 10816,
+        "R2": 0.09456278326607359,
+        "MAE": 49616.781528291416,
+        "RMSE": 93603.7217806022,
+        "MAPE": 37.46042926518938,
+        "MedAPE": 24.21383647798742,
+        "within_10pct": 23.345044378698223,
+        "within_20pct": 43.481878698224854
+      },
+      {
+        "model": "HistGradientBoosting [stratified_random]",
+        "n": 3251,
+        "R2": 0.847489630165284,
+        "MAE": 18027.96656122382,
+        "RMSE": 36937.204889422246,
+        "MAPE": 18.412495104449604,
+        "MedAPE": 10.622747587693498,
+        "within_10pct": 47.83143648108275,
+        "within_20pct": 75.42294678560442
+      },
+      {
+        "model": "HistGradientBoosting [grouped_by_spec]",
+        "n": 3524,
+        "R2": 0.809513736452716,
+        "MAE": 18020.87788630645,
+        "RMSE": 39519.91552239238,
+        "MAPE": 18.17617032198961,
+        "MedAPE": 10.470893393272748,
+        "within_10pct": 47.90011350737798,
+        "within_20pct": 76.56072644721907
+      },
+      {
+        "model": "HistGradientBoosting [time_based]",
+        "n": 10816,
+        "R2": 0.8097101470824304,
+        "MAE": 21318.713741342715,
+        "RMSE": 42911.30887213524,
+        "MAPE": 19.48201255757716,
+        "MedAPE": 12.208553001890433,
+        "within_10pct": 42.12278106508875,
+        "within_20pct": 70.48816568047337
+      },
+      {
+        "model": "Ridge [time_based]",
+        "n": 10816,
+        "R2": 0.7348819997369218,
+        "MAE": 25056.81923658207,
+        "RMSE": 50650.47866146826,
+        "MAPE": 20.52359684489495,
+        "MedAPE": 13.978751891342316,
+        "within_10pct": 37.19489644970414,
+        "within_20pct": 65.89312130177515
+      },
+      {
+        "model": "RandomForest [time_based]",
+        "n": 10816,
+        "R2": 0.8119313298896667,
+        "MAE": 21267.394728101506,
+        "RMSE": 42660.129852012185,
+        "MAPE": 19.538552694930647,
+        "MedAPE": 11.963170992806637,
+        "within_10pct": 43.250739644970416,
+        "within_20pct": 70.04437869822485
+      }
+    ]
+  },
+  "baselines": [
+    {
+      "model": "baseline: global median [time_based]",
+      "n": 10816,
+      "R2": -0.10686664137243396,
+      "MAE": 63032.81240846893,
+      "RMSE": 103493.14763174446,
+      "MAPE": 59.41102787630039,
+      "MedAPE": 42.138364779874216,
+      "within_10pct": 12.57396449704142,
+      "within_20pct": 23.982988165680474
+    },
+    {
+      "model": "baseline: median of identical spec [time_based]",
+      "n": 10816,
+      "R2": 0.07378116651178757,
+      "MAE": 51193.99768953402,
+      "RMSE": 94671.82520158343,
+      "MAPE": 47.039082125096,
+      "MedAPE": 27.77777777777778,
+      "within_10pct": 23.62241124260355,
+      "within_20pct": 41.04105029585799
+    },
+    {
+      "model": "baseline: component cost sum [time_based]",
+      "n": 10816,
+      "R2": 0.09456278326607359,
+      "MAE": 49616.781528291416,
+      "RMSE": 93603.7217806022,
+      "MAPE": 37.46042926518938,
+      "MedAPE": 24.21383647798742,
+      "within_10pct": 23.345044378698223,
+      "within_20pct": 43.481878698224854
+    }
+  ],
+  "notes": "Predicts ASKING price, not sale price. Identical specs in this dataset sell 2-9x apart, so the point estimate should be read together with the 10th-90th percentile range."
+}

@@ -1,2 +1,24 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Jupyter ---
 .ipynb_checkpoints/
 converted_notebooks/
+
+# --- generated ---
+site/                    # mkdocs build output
+reports/executed/        # papermill output; regenerate with `make notebooks`
+
+# --- the source folder this repo was consolidated from ---
+# Kept locally so `make verify` can prove the consolidation is complete.
+docs_for_claude/
+
+# --- OS ---
+.DS_Store
+Thumbs.db

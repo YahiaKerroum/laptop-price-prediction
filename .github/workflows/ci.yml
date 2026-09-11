@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Lint, test, verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the dev image
+        run: docker build -f docker/Dockerfile --target dev -t laptop-price:dev .
+
+      - name: Lint
+        run: |
+          docker run --rm -v "$PWD/src:/app/src:ro" -v "$PWD/tests:/app/tests:ro" \
+            laptop-price:dev bash -c "ruff check src tests && black --check src tests"
+
+      - name: Test
+        run: |
+          docker run --rm -v "$PWD/src:/app/src:ro" -v "$PWD/data:/app/data:ro" \
+            -v "$PWD/tests:/app/tests:ro" -e LAPTOP_PRICE_ROOT=/app \
+            laptop-price:dev python -m pytest --doctest-modules src/laptop_price/cleaning/ tests/
+
+      - name: Verify the repo matches the source project
+        run: python3 scripts/verify_sync.py
+
+      - name: Build the docs
+        run: docker run --rm -v "$PWD:/app" -w /app laptop-price:dev mkdocs build --strict
+
+  pipeline:
+    name: Pipeline and training smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the dev image
+        run: docker build -f docker/Dockerfile --target dev -t laptop-price:dev .
+
+      - name: Build features
+        run: |
+          docker run --rm -v "$PWD/src:/app/src:ro" -v "$PWD/data:/app/data" \
+            -v "$PWD/docs:/app/docs" -e LAPTOP_PRICE_ROOT=/app \
+            laptop-price:dev python -m laptop_price pipeline --data-card
+
+      - name: Train
+        run: |
+          docker run --rm -v "$PWD/src:/app/src:ro" -v "$PWD/data:/app/data" \
+            -v "$PWD/models:/app/models" -e LAPTOP_PRICE_ROOT=/app \
+            laptop-price:dev python -m laptop_price train --no-compare
+
+      - name: Check the API serves the trained model
+        run: |
+          docker run --rm -d --name api -p 8000:8000 \
+            -v "$PWD/src:/app/src:ro" -v "$PWD/data:/app/data:ro" \
+            -v "$PWD/models:/app/models:ro" -e LAPTOP_PRICE_ROOT=/app \
+            laptop-price:dev uvicorn laptop_price.api.main:app --host 0.0.0.0 --port 8000
+          for i in $(seq 1 30); do curl -fsS localhost:8000/health && break; sleep 2; done
+          curl -fsS -X POST localhost:8000/predict -H 'Content-Type: application/json' \
+            -d '{"ram_gb":16,"ssd_gb":512,"cpu_mark":19776,"brand":"THINKPAD"}'
+          docker stop api

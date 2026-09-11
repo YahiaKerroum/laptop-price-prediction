@@ -1,0 +1,53 @@
+Input Notebook:  notebooks/08_association_rules.ipynb
+Output Notebook: reports/executed/08_association_rules.ipynb
+Working directory: .
+/usr/local/lib/python3.11/site-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.
+  _validate(nbdict, ref, version, version_minor, relax_add_props)
+Executing notebook with kernel: python3
+Traceback (most recent call last):
+  File "/usr/local/bin/papermill", line 8, in <module>
+    sys.exit(papermill())
+             ^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 1631, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 1552, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 1415, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/click/core.py", line 910, in invoke
+    return callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/click/decorators.py", line 34, in new_func
+    return f(get_current_context(), *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/papermill/cli.py", line 235, in papermill
+    execute_notebook(
+  File "/usr/local/lib/python3.11/site-packages/papermill/execute.py", line 131, in execute_notebook
+    raise_for_execution_errors(nb, output_path)
+  File "/usr/local/lib/python3.11/site-packages/papermill/execute.py", line 251, in raise_for_execution_errors
+    raise error
+papermill.exceptions.PapermillExecutionError: 
+---------------------------------------------------------------------------
+Exception encountered at "In [19]":
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+Cell In[19], line 3
+      1 # Example run (Apriori)
+      2 # experiment 1-1
+----> 3 frequent_1_1, rules_1_1 = run_rules_apriori(exp_1_1, min_support=0.05, min_confidence=0.6, min_lift=1.1)
+      4 print("\nTop rules - Experiment 1-1 (Apriori)")
+      5 display(rules_1_1)
+
+Cell In[18], line 36, in run_rules_apriori(data, min_support, min_confidence, min_lift, max_len, top_n)
+     34 def run_rules_apriori(data, min_support=0.02, min_confidence=0.5, min_lift=1.0, max_len=None, top_n=20):
+     35     frequent = apriori(data, min_support=min_support, use_colnames=True, max_len=max_len, low_memory=True)
+---> 36     rules = association_rules(frequent, metric='confidence', min_threshold=min_confidence)
+     37     rules = rules[rules['lift'] >= min_lift]
+     38     rules = rules.sort_values(['lift', 'confidence'], ascending=False)
+     39     return frequent, rules.head(top_n)
+
+TypeError: association_rules() missing 1 required positional argument: 'num_itemsets'
+
