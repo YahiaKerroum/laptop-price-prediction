@@ -160,7 +160,7 @@ make build
 make pipeline     # features.csv + docs/data-card.csv
 make train        # models/<version>/
 make notebooks    # all 9, top-to-bottom, via papermill
-make test         # 152 tests
+make test         # 158 tests
 make verify       # repo vs the original project folder
 ```
 

@@ -302,3 +302,66 @@ class TestPipelineRoundTrip:
 
         prediction = pipeline.predict(extreme)[0]
         assert CONFIG.price.min_dzd <= prediction <= CONFIG.price.max_dzd
+
+
+class TestMonotonicConstraints:
+    """More RAM must never lower the estimate.
+
+    These were declared in the config and computed by a helper that nothing
+    called - the same "dead code" pattern the audit flagged in the original
+    project. The constraint is now passed to the estimator, and this test is
+    what keeps it passed.
+    """
+
+    @pytest.fixture
+    def fitted(self, listings):
+        from laptop_price.models.pipeline import build_pipeline
+
+        matrix = build_feature_matrix(listings)
+        features = matrix[[*NUMERIC_FEATURES, *CATEGORICAL_FEATURES]]
+        pipeline = build_pipeline()
+        pipeline.fit(features, matrix[TARGET])
+        return pipeline, features
+
+    def test_constraints_are_declared(self):
+        from laptop_price.models.pipeline import monotonic_constraints
+
+        constraints = monotonic_constraints()
+        assert constraints["RAM_SIZE"] == 1
+        assert set(constraints) <= set(NUMERIC_FEATURES)
+
+    def test_constraints_reach_the_estimator(self, fitted):
+        pipeline, _ = fitted
+        inner = getattr(pipeline, "regressor_", pipeline)
+        assert inner.named_steps["model"].monotonic_cst
+
+    @pytest.mark.parametrize(
+        ("column", "values"),
+        [
+            ("RAM_SIZE", [4.0, 8.0, 16.0, 32.0, 64.0]),
+            ("SSD_SIZE", [128.0, 256.0, 512.0, 1024.0]),
+            ("cpu_mark", [3_000.0, 8_000.0, 15_000.0, 25_000.0]),
+        ],
+    )
+    def test_more_is_never_worth_less(self, fitted, column, values):
+        pipeline, features = fitted
+        row = features.head(1)
+
+        predictions = []
+        for value in values:
+            probe = row.copy()
+            probe.loc[:, column] = value
+            predictions.append(float(pipeline.predict(probe)[0]))
+
+        assert all(
+            later >= earlier - 1e-6
+            for earlier, later in zip(predictions, predictions[1:], strict=False)
+        ), f"{column} {values} -> {predictions}"
+
+    def test_preprocessor_emits_named_features(self, fitted):
+        """Constraints are keyed by name, which needs DataFrame output."""
+        pipeline, features = fitted
+        inner = getattr(pipeline, "regressor_", pipeline)
+        transformed = inner.named_steps["preprocess"].transform(features.head(3))
+        assert isinstance(transformed, pd.DataFrame)
+        assert "RAM_SIZE" in transformed.columns

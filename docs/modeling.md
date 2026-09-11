@@ -67,9 +67,18 @@ natively, and not imputing is the point of the condition fix. Categoricals are o
 encoded with `handle_unknown="ignore"` and `min_frequency=20`, so an unseen city at inference
 time cannot raise.
 
-Monotonic constraints are declared for `RAM_SIZE`, `SSD_SIZE`, `cpu_mark` and
+Monotonic constraints are **enforced** for `RAM_SIZE`, `SSD_SIZE`, `cpu_mark` and
 `gpu_g3d_mark` — more must never mean cheaper. Beyond correctness this keeps the
 "what would raise the value" panel from producing an embarrassing recommendation.
+
+They are passed to the estimator as a dict keyed by feature name, which requires the
+preprocessor to emit a DataFrame (`set_output(transform="pandas")`) — the width of the
+transformed matrix depends on how many one-hot levels survive `min_frequency` and is not
+known until fit time, so a positional array could not be built in advance. The quantile
+models carry the same constraints: an upper bound that falls when RAM rises is indefensible.
+
+A parametrised test sweeps each constrained feature across its range and asserts the
+prediction never decreases.
 
 ## Splits
 

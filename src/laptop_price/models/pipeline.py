@@ -67,7 +67,7 @@ def make_preprocessor(
         ]
     )
 
-    return ColumnTransformer(
+    transformer = ColumnTransformer(
         [
             ("num", numeric_steps, list(numeric)),
             ("cat", categorical_steps, list(categorical)),
@@ -75,6 +75,9 @@ def make_preprocessor(
         remainder="drop",
         verbose_feature_names_out=False,
     )
+    # pandas output keeps feature names through the transform, which is what
+    # lets monotonic constraints be declared by name (see monotonic_constraints).
+    return transformer.set_output(transform="pandas")
 
 
 #: Predictions are clamped to the band the model was trained on. Training trims
@@ -96,15 +99,20 @@ def _expm1_clipped(values: np.ndarray) -> np.ndarray:
     return np.expm1(np.clip(values, _LOG_PREDICTION_FLOOR, _LOG_PREDICTION_CEILING))
 
 
-def _monotonic_constraints(feature_names: list[str]) -> list[int]:
-    """+1 for features where more must never mean cheaper.
+def monotonic_constraints() -> dict[str, int]:
+    """``{feature: +1}`` for features where more must never mean cheaper.
 
     More RAM should not lower the predicted price. Beyond correctness this keeps
     the "what would raise the value" panel in the UI from producing an
     embarrassing recommendation.
+
+    Returned as a dict keyed by feature name rather than a positional array,
+    because the width of the transformed matrix depends on how many one-hot
+    levels survive ``min_frequency`` and is therefore unknown until fit time.
+    That only works if the preprocessor emits a DataFrame - see
+    :func:`make_preprocessor`, which sets pandas output for exactly this reason.
     """
-    increasing = set(CONFIG.model.monotonic_increasing)
-    return [1 if name in increasing else 0 for name in feature_names]
+    return dict.fromkeys(CONFIG.model.monotonic_increasing, 1)
 
 
 def build_pipeline(
@@ -136,6 +144,7 @@ def build_pipeline(
             max_leaf_nodes=31,
             min_samples_leaf=20,
             l2_regularization=1.0,
+            monotonic_cst=monotonic_constraints(),
             random_state=CONFIG.model.random_state,
         )
 
@@ -176,6 +185,9 @@ def build_quantile_pipelines(
             learning_rate=0.06,
             min_samples_leaf=20,
             l2_regularization=1.0,
+            # The interval bounds must move the same way the point estimate
+            # does; an upper bound that falls when RAM rises is indefensible.
+            monotonic_cst=monotonic_constraints(),
             random_state=CONFIG.model.random_state,
         )
         pipelines[q] = build_pipeline(estimator=estimator)
@@ -197,6 +209,7 @@ def feature_frame(df: pd.DataFrame) -> pd.DataFrame:
 
 __all__ = [
     "build_pipeline",
+    "monotonic_constraints",
     "build_quantile_pipelines",
     "feature_frame",
     "make_preprocessor",
