@@ -57,6 +57,12 @@ Reproduces the original course artifact exactly: 15 numeric columns, `spec_Etat`
 encoded with missing→0, `city`/`created_at`/`model_name` dropped. Consumed by notebooks 04
 and 05 so the original results stay checkable.
 
+**Verified reproducible.** Re-running this notebook from `pre_processed_data.csv` regenerates
+`model_ready_data.csv` **byte-for-byte identically** to the file shipped in the original
+project folder — `make verify` reports it as identical rather than changed. That is a
+stronger guarantee than the original had of itself: before the path and nbformat repairs,
+the notebook could not be executed top-to-bottom at all.
+
 ---
 
 ## Stage 2b — Repaired feature build *(what the service uses)*
@@ -154,7 +160,7 @@ make build
 make pipeline     # features.csv + docs/data-card.csv
 make train        # models/<version>/
 make notebooks    # all 9, top-to-bottom, via papermill
-make test         # 135 tests
+make test         # 152 tests
 make verify       # repo vs the original project folder
 ```
 
