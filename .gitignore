@@ -14,6 +14,7 @@ converted_notebooks/
 # --- generated ---
 site/                    # mkdocs build output
 reports/executed/        # papermill output; regenerate with `make notebooks`
+models/notebook_run/     # notebook 04's artifacts; the shipped model is models/<version>/
 
 # --- the source folder this repo was consolidated from ---
 # Kept locally so `make verify` can prove the consolidation is complete.
