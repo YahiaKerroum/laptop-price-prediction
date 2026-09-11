@@ -119,7 +119,12 @@ def rank_deals(
         from laptop_price.anomaly.detectors import fit_detectors, score_listings
 
         ensemble = fit_detectors(matrix)
-        outlier_flags = score_listings(ensemble, matrix)["is_outlier"]
+        # The union, not the majority vote. The detectors find sharply different
+        # structure here - LocalOutlierFactor's flags are disjoint from the
+        # global methods' (Jaccard 0.00) - so requiring agreement would let most
+        # anomalies through. For a feed that tells people where to spend money,
+        # a false "not a bargain" is much cheaper than a false "bargain".
+        outlier_flags = score_listings(ensemble, matrix)["any_outlier"]
 
     scores = classify_listings(matrix, bundle, outlier_flags=outlier_flags)
 

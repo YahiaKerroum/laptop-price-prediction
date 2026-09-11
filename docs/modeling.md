@@ -159,6 +159,29 @@ are reported: pairwise Jaccard agreement between detectors, and precision@k once
 listings are hand-labelled. `notebooks/09` writes a stratified labelling template to
 `data/labels/` so the effort is spent on rows that matter.
 
+### What the detectors actually agree on
+
+At 2% contamination each detector flags 326 listings. They do **not** flag the same ones:
+
+| | IsolationForest | LOF | ECOD | COPOD |
+|---|---|---|---|---|
+| **IsolationForest** | 1.00 | 0.00 | 0.45 | 0.71 |
+| **LOF** | 0.00 | 1.00 | 0.00 | 0.00 |
+| **ECOD** | 0.45 | 0.00 | 1.00 | 0.49 |
+| **COPOD** | 0.71 | 0.00 | 0.49 | 1.00 |
+
+The three global methods overlap substantially. `LocalOutlierFactor` overlaps with none of
+them — Jaccard 0.00 across the board. That is not a bug: LOF scores *local* density, so it
+finds listings that are odd relative to their immediate neighbourhood rather than odd in the
+distribution as a whole. Majority vote yields 288 listings (1.8%); the union yields 815
+(5.0%).
+
+The deal filter uses the **union**, not the majority. For a feed that tells people where to
+spend money, a false "not a bargain" costs far less than a false "bargain".
+
+**This is why four detectors were benchmarked rather than one.** A single detector would have
+looked perfectly reasonable and quietly covered a quarter of the anomaly space.
+
 Section 6c is the piece that makes the project one argument rather than three assignments:
 the association rules mined for their own deliverable become an input to fraud detection.
 

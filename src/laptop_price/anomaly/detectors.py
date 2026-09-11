@@ -50,6 +50,8 @@ class AnomalyEnsemble:
     detectors: dict[str, Any] = field(default_factory=dict)
     feature_names: tuple[str, ...] = DETECTOR_FEATURES
     contamination: float = 0.02
+    #: How many detectors must agree before `is_outlier` is set.
+    consensus_min: int = 2
 
     def transform(self, df: pd.DataFrame) -> np.ndarray:
         return self.preprocessor.transform(_detector_frame(df, self.feature_names))
@@ -130,18 +132,34 @@ def score_listings(ensemble: AnomalyEnsemble, df: pd.DataFrame) -> pd.DataFrame:
     for name, detector in ensemble.detectors.items():
         if name == "local_outlier_factor":
             # LOF without novelty only exposes the labels from its fit.
-            labels = detector.fit_predict(matrix)
-            flags = labels == -1
-        elif hasattr(detector, "predict") and hasattr(detector, "decision_function"):
-            flags = detector.predict(matrix) == -1
-        else:  # pragma: no cover - PyOD estimators
+            flags = detector.fit_predict(matrix) == -1
+        elif _is_pyod(detector):
+            # PyOD marks outliers with 1; scikit-learn marks them with -1.
+            # Getting this backwards makes ECOD and COPOD flag nothing at all,
+            # silently, while still looking like they ran.
             flags = detector.predict(matrix) == 1
-        result[f"{name}_outlier"] = flags
+        else:
+            flags = detector.predict(matrix) == -1
+        result[f"{name}_outlier"] = np.asarray(flags, dtype=bool)
 
-    flag_columns = [c for c in result.columns if c.endswith("_outlier")]
+    # Built from the detector names rather than by suffix: "is_outlier" also ends
+    # in "_outlier", and including the consensus column in its own input is the
+    # kind of bug that quietly halves every count.
+    flag_columns = [f"{name}_outlier" for name in ensemble.detectors]
     result["n_detectors_flagged"] = result[flag_columns].sum(axis=1)
-    result["is_outlier"] = result["n_detectors_flagged"] >= max(1, len(flag_columns) // 2)
+
+    # Two views, because the detectors disagree sharply on this data (see
+    # detector_agreement) and the right threshold depends on the question:
+    #   is_outlier  - majority vote, for "what is definitely odd?"
+    #   any_outlier - union, for "what should not be advertised as a bargain?"
+    result["is_outlier"] = result["n_detectors_flagged"] >= ensemble.consensus_min
+    result["any_outlier"] = result["n_detectors_flagged"] >= 1
     return result
+
+
+def _is_pyod(detector: Any) -> bool:
+    """True for PyOD estimators, which invert scikit-learn's label convention."""
+    return type(detector).__module__.startswith("pyod")
 
 
 def detector_agreement(scores: pd.DataFrame) -> pd.DataFrame:
@@ -150,7 +168,8 @@ def detector_agreement(scores: pd.DataFrame) -> pd.DataFrame:
     Evaluating unsupervised detection without labels is mostly impossible; how
     much independent methods agree is the honest proxy to report.
     """
-    columns = [c for c in scores.columns if c.endswith("_outlier")]
+    consensus = {"is_outlier", "any_outlier"}
+    columns = [c for c in scores.columns if c.endswith("_outlier") and c not in consensus]
     frame = pd.DataFrame(index=columns, columns=columns, dtype=float)
     for left in columns:
         for right in columns:
