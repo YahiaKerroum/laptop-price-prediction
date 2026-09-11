@@ -1,4 +1,4 @@
-# Model card - laptop price estimator `v20260911T1241`
+# Model card - laptop price estimator `v20260911T1337`
 
 ## What it does
 Estimates the **asking price**, in Algerian dinars, of a used laptop listed on
@@ -70,7 +70,7 @@ periods it has already seen.
 git checkout unknown
 make build && make pipeline && make train
 ```
-Trained 2026-09-11T12:41:10+00:00 with scikit-learn 1.5.2
+Trained 2026-09-11T13:37:09+00:00 with scikit-learn 1.5.2
 on Python 3.11.16.
 
 ## Notes

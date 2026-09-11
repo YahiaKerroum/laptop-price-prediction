@@ -148,7 +148,7 @@ curl -X POST localhost:8000/predict -H 'Content-Type: application/json' \
 {
   "estimate_dzd": 109100.0,
   "range_dzd": [105200.0, 147900.0],
-  "model_version": "v20260911T1241"
+  "model_version": "v20260911T1337"
 }
 ```
 

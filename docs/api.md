@@ -16,7 +16,7 @@ Liveness and readiness. Used by the container healthcheck.
 {
   "status": "ok",
   "model_loaded": true,
-  "model_version": "v20260911T1241",
+  "model_version": "v20260911T1337",
   "package_version": "1.0.0"
 }
 ```
@@ -32,7 +32,7 @@ The feature contract the loaded pipeline was actually fitted on.
 
 ```json
 {
-  "model_version": "v20260911T1241",
+  "model_version": "v20260911T1337",
   "target": "price_corrected",
   "numeric_features": ["RAM_SIZE", "SSD_SIZE", "..."],
   "categorical_features": ["brand", "city_grouped", "cpu_manufacturer", "cpu_family"],
@@ -89,7 +89,7 @@ curl -X POST localhost:8000/predict \
   "estimate_dzd": 109100.0,
   "range_dzd": [105200.0, 147900.0],
   "quantiles": {"0.1": 105200.0, "0.5": 110900.0, "0.9": 147900.0},
-  "model_version": "v20260911T1241",
+  "model_version": "v20260911T1337",
   "currency": "DZD",
   "caveat": "Asking price, not sale price. Prices for a given configuration vary widely; treat the range as the real answer."
 }

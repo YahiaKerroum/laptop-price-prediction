@@ -62,7 +62,7 @@ works when the API container is down.
 Training emits **one** object:
 
 ```
-models/v20260911T1241/
+models/v20260911T1337/
 ├── price_pipeline.joblib       ColumnTransformer → imputers → encoders → estimator
 ├── quantile_pipelines.joblib   the 10th/50th/90th percentile models
 ├── metadata.json               feature contract, metrics, git SHA, library versions

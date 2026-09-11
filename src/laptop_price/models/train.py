@@ -15,7 +15,11 @@ from sklearn.linear_model import Ridge
 
 from laptop_price.config import CONFIG
 from laptop_price.evaluation.baselines import baseline_table
-from laptop_price.evaluation.metrics import interval_coverage, regression_metrics
+from laptop_price.evaluation.metrics import (
+    interval_coverage,
+    regression_metrics,
+    segment_report,
+)
 from laptop_price.evaluation.splits import Split, all_splits
 from laptop_price.features.build import (
     CATEGORICAL_FEATURES,
@@ -143,6 +147,23 @@ def train(
     else:  # pragma: no cover - only if every row were ambiguous
         final_metrics_clean = dict(final_metrics)
 
+    # Per-segment error, because an aggregate R2 hides that the model is much
+    # worse on premium and rare machines than on the mainstream bulk of the
+    # market (roadmap 4d).
+    test_actual = target.iloc[strat.test_idx]
+    test_predicted = final_pipeline.predict(features.iloc[strat.test_idx])
+    segments = {
+        "price_decile": pd.qcut(test_actual, 10, labels=False, duplicates="drop"),
+        "brand": matrix["brand"].iloc[strat.test_idx],
+        "city": matrix["city_grouped"].iloc[strat.test_idx],
+        "listing_year": matrix["listing_year"].iloc[strat.test_idx],
+        "condition": matrix["spec_Etat"].iloc[strat.test_idx].fillna("not stated"),
+    }
+    segment_reports = {
+        name: segment_report(test_actual, test_predicted, values)
+        for name, values in segments.items()
+    }
+
     quantile_pipelines: dict[float, Any] = {}
     interval_stats: dict[str, float] = {}
     if fit_quantiles:
@@ -180,6 +201,10 @@ def train(
             "10th-90th percentile range."
         ),
     )
+
+    metadata["metrics"]["by_segment"] = {
+        name: report.to_dict("records") for name, report in segment_reports.items()
+    }
 
     bundle = ArtifactBundle(
         pipeline=final_pipeline,

@@ -47,11 +47,18 @@ def pipeline_main(argv: list[str] | None = None) -> int:
 
     if args.data_card:
         from laptop_price.features.schema import describe_features
+        from laptop_price.reporting import render_data_dictionary
 
-        card_path = paths.DOCS_DIR / "data-card.csv"
-        card_path.parent.mkdir(parents=True, exist_ok=True)
-        describe_features(matrix).to_csv(card_path, index=False)
-        print(f"data card                {card_path}")
+        card = describe_features(matrix)
+        paths.DOCS_DIR.mkdir(parents=True, exist_ok=True)
+
+        csv_path = paths.DOCS_DIR / "data-card.csv"
+        card.to_csv(csv_path, index=False)
+
+        md_path = paths.DOCS_DIR / "data-card.md"
+        md_path.write_text(render_data_dictionary(card, title="Data dictionary - features.csv"))
+        print(f"data card                {csv_path}")
+        print(f"                         {md_path}")
 
     return 0
 
@@ -90,6 +97,25 @@ def train_main(argv: list[str] | None = None) -> int:
             f"\nprediction interval: {interval['coverage_pct']:.1f}% coverage, "
             f"median width {interval['median_width']:,.0f} DZD "
             f"({interval['median_relative_width']:.0f}% of price)"
+        )
+
+    by_segment = bundle.metadata["metrics"].get("by_segment", {})
+    deciles = by_segment.get("price_decile") or []
+    if deciles:
+        _print_header("Error by price decile (0 = cheapest)")
+        frame = pd.DataFrame(deciles).sort_values("segment")
+        view = pd.DataFrame(
+            {
+                "decile": frame["segment"].astype(int),
+                "n": frame["n"],
+                "MedAPE": frame["MedAPE"].map("{:.1f}%".format),
+                "MAE": frame["MAE"].map("{:,.0f}".format),
+            }
+        )
+        print(view.to_string(index=False))
+        print(
+            "\nRead MedAPE, not R2: within a price decile there is almost no variance\n"
+            "to explain, so R2 goes negative even where the predictions are good."
         )
 
     target = save_bundle(bundle, model_card=render_model_card(bundle))

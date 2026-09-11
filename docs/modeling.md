@@ -137,6 +137,57 @@ moves R² by 0.0003 — in the *favourable* direction, but by an amount indistin
 noise on a 3,251-row test set. The sharpest methodological criticism of the original is now a
 demonstrated non-issue rather than an open question.
 
+## Where the model is weak
+
+Aggregate error hides a lot. Every training run now writes per-segment tables into
+`metadata.json` (by price decile, brand, city, listing year and condition) and prints the
+price-decile one.
+
+**Read `MedAPE`, not `R²`, in these tables.** R² is measured against the variance *within*
+each segment, and a price decile has almost none by construction, so it goes sharply negative
+even where predictions are good. That is a property of the statistic, not a finding.
+
+### By price decile
+
+| Decile | n | MedAPE | MAE (DZD) |
+|---|---|---|---|
+| 0 (cheapest) | 326 | **20.4%** | 12,679 |
+| 1–8 | ~325 each | 8.7–11.2% | 7,550–28,929 |
+| 9 (most expensive) | 325 | 9.5% | 53,528 |
+
+The cheapest tenth of the market is **roughly twice as hard as everything else**. That fits:
+a 25,000 DZD laptop is old, its condition dominates its price, and condition is the field
+sellers most often leave blank.
+
+### By listing year
+
+| Year | n | MedAPE |
+|---|---|---|
+| 2021 | 69 | 20.6% |
+| 2023 | 39 | 13.8% |
+| 2024 | 794 | 10.6% |
+| 2025 | 2,167 | 9.9% |
+
+Error rises steadily the further back a listing sits. This is the temporal drift the
+time-based split exists to measure, visible directly.
+
+### By stated condition
+
+| Condition | n | MedAPE |
+|---|---|---|
+| MOYEN (fair) | 64 | 23.0% |
+| BON ÉTAT | 1,027 | 11.0% |
+| JAMAIS UTILISÉ | 784 | 10.6% |
+| **not stated** | 1,376 | **9.4%** |
+
+The listings with **no stated condition are the easiest to price**, not the hardest. That is
+a direct vindication of encoding missing as `NaN` rather than as a low ordinal: those rows
+are not degraded observations, they are a coherent group the model reads well. The original
+scheme put them at the bottom of a quality scale.
+
+`MOYEN` is the hardest and the rarest — 64 listings, and "fair condition" covers everything
+from a scuffed lid to a failing battery.
+
 ## Prediction intervals
 
 Three `HistGradientBoosting` quantile models at q = 0.1 / 0.5 / 0.9.

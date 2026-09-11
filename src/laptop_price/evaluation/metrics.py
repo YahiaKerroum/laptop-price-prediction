@@ -71,6 +71,12 @@ def segment_report(
 
     Aggregate R² hides that a model is usually poor on premium and rare machines.
     Pass ``segments`` as price decile, brand, city, condition or listing year.
+
+    **Read ``MedAPE``, not ``R2``, in this table.** R² is measured against the
+    variance *within* each segment, and a price decile has almost none by
+    construction, so R² there goes sharply negative even where the predictions
+    are good. It is retained only for segments with real internal spread (brand,
+    city); for narrow strata it is an artefact of the statistic, not a finding.
     """
     frame = pd.DataFrame(
         {
@@ -92,7 +98,7 @@ def segment_report(
         return pd.DataFrame(columns=["segment", "n", "R2", "MAE", "MedAPE"])
 
     report = pd.DataFrame(rows).drop(columns=["model"])
-    ordered = ["segment", "n", "R2", "MAE", "RMSE", "MAPE", "MedAPE"]
+    ordered = ["segment", "n", "MedAPE", "MAE", "MAPE", "RMSE", "R2"]
     return report[ordered].sort_values("MedAPE", ascending=False).reset_index(drop=True)
 
 
