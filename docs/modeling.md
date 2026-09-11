@@ -67,6 +67,14 @@ natively, and not imputing is the point of the condition fix. Categoricals are o
 encoded with `handle_unknown="ignore"` and `min_frequency=20`, so an unseen city at inference
 time cannot raise.
 
+`early_stopping` is set **explicitly to False** rather than left at its `'auto'` default.
+`'auto'` enables early stopping only above 10,000 samples, which meant the 60% comparison fit
+(9,753 rows) trained for the full `max_iter` while the 80% refit that becomes the shipped
+artifact (13,004 rows) early-stopped *and* held back a further 10% internally. The artifact
+was therefore trained differently from the model whose metrics were reported — silently, as a
+function of split size. Fixing it improved the shipped artifact from R² 0.821 / MAE 19,239 to
+0.839 / 18,017. Regularisation comes from `l2_regularization` and `max_leaf_nodes` instead.
+
 Monotonic constraints are **enforced** for `RAM_SIZE`, `SSD_SIZE`, `cpu_mark` and
 `gpu_g3d_mark` — more must never mean cheaper. Beyond correctness this keeps the
 "what would raise the value" panel from producing an embarrassing recommendation.
@@ -121,11 +129,12 @@ hardest exactly where the model would otherwise extrapolate.
 
 | Test set | n | R² | MAE |
 |---|---|---|---|
-| All rows | 3,251 | 0.8210 | 19,239 |
-| Excluding `price_unit_ambiguous` | 3,202 | 0.8210 | 19,158 |
+| All rows | 3,251 | 0.8394 | 18,017 |
+| Excluding `price_unit_ambiguous` | 3,202 | 0.8397 | 17,897 |
 
 247 rows (1.6%) had their target influenced by a feature-derived estimate. Dropping them
-leaves R² unchanged to four decimal places. The sharpest methodological criticism of the original is now a
+moves R² by 0.0003 — in the *favourable* direction, but by an amount indistinguishable from
+noise on a 3,251-row test set. The sharpest methodological criticism of the original is now a
 demonstrated non-issue rather than an open question.
 
 ## Prediction intervals
@@ -135,8 +144,8 @@ Three `HistGradientBoosting` quantile models at q = 0.1 / 0.5 / 0.9.
 | Metric | Value |
 |---|---|
 | Nominal coverage | 80% |
-| **Observed coverage** | **73.0%** |
-| Median width | 36,146 DZD (37% of price) |
+| **Observed coverage** | **72.4%** |
+| Median width | 33,959 DZD (36% of price) |
 
 The interval under-covers by about 7 points. Reported as measured rather than tuned to look
 right; conformal prediction (MAPIE) would give a coverage guarantee and is the obvious next

@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#model-card-laptop-price-estimator-v20260911t1237" class="md-skip">
+        <a href="#model-card-laptop-price-estimator-v20260911t1241" class="md-skip">
           Skip to content
         </a>
       
@@ -916,7 +916,7 @@
   
 
 
-<h1 id="model-card-laptop-price-estimator-v20260911t1237">Model card - laptop price estimator <code>v20260911T1237</code><a class="headerlink" href="#model-card-laptop-price-estimator-v20260911t1237" title="Permanent link">&para;</a></h1>
+<h1 id="model-card-laptop-price-estimator-v20260911t1241">Model card - laptop price estimator <code>v20260911T1241</code><a class="headerlink" href="#model-card-laptop-price-estimator-v20260911t1241" title="Permanent link">&para;</a></h1>
 <h2 id="what-it-does">What it does<a class="headerlink" href="#what-it-does" title="Permanent link">&para;</a></h2>
 <p>Estimates the <strong>asking price</strong>, in Algerian dinars, of a used laptop listed on
 Ouedkniss, from its specifications, condition, city and listing date.</p>
@@ -959,9 +959,9 @@ claims precision the data does not contain.</p>
 <tbody>
 <tr>
 <td>Stratified random (comparable to the original report)</td>
-<td>0.8210</td>
-<td>19,239</td>
-<td>10.9%</td>
+<td>0.8394</td>
+<td>18,017</td>
+<td>10.3%</td>
 </tr>
 <tr>
 <td><strong>Time-based (train &lt;= 2024, test 2025) - the honest headline</strong></td>
@@ -971,9 +971,9 @@ claims precision the data does not contain.</p>
 </tr>
 <tr>
 <td>Stratified, excluding unit-ambiguous rows</td>
-<td>0.8210</td>
-<td>19,158</td>
-<td>10.9%</td>
+<td>0.8397</td>
+<td>17,897</td>
+<td>10.3%</td>
 </tr>
 </tbody>
 </table>
@@ -1013,7 +1013,7 @@ periods it has already seen.</p>
 </tbody>
 </table>
 <h3 id="prediction-interval">Prediction interval<a class="headerlink" href="#prediction-interval" title="Permanent link">&para;</a></h3>
-<p>10th-90th percentile coverage: <strong>73.0%</strong>, median width 36,146 DZD (37% of price).</p>
+<p>10th-90th percentile coverage: <strong>72.4%</strong>, median width 33,959 DZD (36% of price).</p>
 <h2 id="known-limitations">Known limitations<a class="headerlink" href="#known-limitations" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Noise ceiling.</strong> Identical spec rows sell 2-9x apart; predicting the perfect
@@ -1031,7 +1031,7 @@ periods it has already seen.</p>
 <p><div class="highlight"><pre><span></span><code>git checkout unknown
 make build &amp;&amp; make pipeline &amp;&amp; make train
 </code></pre></div>
-Trained 2026-09-11T12:37:23+00:00 with scikit-learn 1.5.2
+Trained 2026-09-11T12:41:10+00:00 with scikit-learn 1.5.2
 on Python 3.11.16.</p>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <p>Predicts ASKING price, not sale price. Identical specs in this dataset sell 2-9x apart, so the point estimate should be read together with the 10th-90th percentile range.</p>

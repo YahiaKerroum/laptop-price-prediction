@@ -983,7 +983,7 @@ without a rebuild — <code>POST /reload</code> picks it up without a restart.</
 </code></pre></div>
 <h2 id="health-checks">Health checks<a class="headerlink" href="#health-checks" title="Permanent link">&para;</a></h2>
 <p>Both service targets declare a <code>HEALTHCHECK</code>. <code>GET /health</code> distinguishes two states:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ok"</span><span class="p">,</span><span class="w"> </span><span class="nt">"model_loaded"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">"model_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"v20260911T0203"</span><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ok"</span><span class="p">,</span><span class="w"> </span><span class="nt">"model_loaded"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">"model_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"v20260911T1241"</span><span class="p">}</span>
 <span class="p">{</span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"degraded"</span><span class="p">,</span><span class="w"> </span><span class="nt">"model_loaded"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nt">"model_version"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">}</span>
 </code></pre></div>
 <p>The API starts even with no model present, so <code>/health</code> can report <em>why</em> it is not ready
@@ -991,7 +991,7 @@ instead of crash-looping. Prediction endpoints return <strong>503</strong> with 
 <h2 id="model-artifacts">Model artifacts<a class="headerlink" href="#model-artifacts" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>models/
 ├── latest                   plain-text pointer to the current version
-├── v20260911T0203/
+├── v20260911T1241/
 │   ├── price_pipeline.joblib
 │   ├── quantile_pipelines.joblib
 │   ├── metadata.json
@@ -1003,7 +1003,7 @@ instead of crash-looping. Prediction endpoints return <strong>503</strong> with 
 and the model was trained unscaled. It is retained so the original submission stays
 inspectable, not because it works. Nothing loads it.</p>
 <p>Rolling back is editing one file:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">echo</span><span class="w"> </span><span class="s2">"v20260911T0159"</span><span class="w"> </span>&gt;<span class="w"> </span>models/latest
+<div class="highlight"><pre><span></span><code><span class="nb">echo</span><span class="w"> </span><span class="s2">"v20260911T1150"</span><span class="w"> </span>&gt;<span class="w"> </span>models/latest
 curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>localhost:8000/reload
 </code></pre></div>
 <h2 id="deploying-elsewhere">Deploying elsewhere<a class="headerlink" href="#deploying-elsewhere" title="Permanent link">&para;</a></h2>

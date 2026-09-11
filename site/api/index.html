@@ -842,7 +842,7 @@
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ok"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"model_loaded"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">"model_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"v20260911T1237"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"model_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"v20260911T1241"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"package_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1.0.0"</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -852,7 +852,7 @@ can report why; prediction endpoints then return 503.</p>
 <h2 id="get-schema"><code>GET /schema</code><a class="headerlink" href="#get-schema" title="Permanent link">&para;</a></h2>
 <p>The feature contract the loaded pipeline was actually fitted on.</p>
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">"model_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"v20260911T1237"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"model_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"v20260911T1241"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"target"</span><span class="p">:</span><span class="w"> </span><span class="s2">"price_corrected"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"numeric_features"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"RAM_SIZE"</span><span class="p">,</span><span class="w"> </span><span class="s2">"SSD_SIZE"</span><span class="p">,</span><span class="w"> </span><span class="s2">"..."</span><span class="p">],</span>
 <span class="w">  </span><span class="nt">"categorical_features"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"brand"</span><span class="p">,</span><span class="w"> </span><span class="s2">"city_grouped"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cpu_manufacturer"</span><span class="p">,</span><span class="w"> </span><span class="s2">"cpu_family"</span><span class="p">],</span>
@@ -963,14 +963,14 @@ value.</p>
 <span class="w">  </span><span class="nt">"estimate_dzd"</span><span class="p">:</span><span class="w"> </span><span class="mf">109100.0</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"range_dzd"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">105200.0</span><span class="p">,</span><span class="w"> </span><span class="mf">147900.0</span><span class="p">],</span>
 <span class="w">  </span><span class="nt">"quantiles"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"0.1"</span><span class="p">:</span><span class="w"> </span><span class="mf">105200.0</span><span class="p">,</span><span class="w"> </span><span class="nt">"0.5"</span><span class="p">:</span><span class="w"> </span><span class="mf">110900.0</span><span class="p">,</span><span class="w"> </span><span class="nt">"0.9"</span><span class="p">:</span><span class="w"> </span><span class="mf">147900.0</span><span class="p">},</span>
-<span class="w">  </span><span class="nt">"model_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"v20260911T1237"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"model_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"v20260911T1241"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"currency"</span><span class="p">:</span><span class="w"> </span><span class="s2">"DZD"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"caveat"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Asking price, not sale price. Prices for a given configuration vary widely; treat the range as the real answer."</span>
 <span class="p">}</span>
 </code></pre></div>
 <p><strong><code>range_dzd</code> is the answer.</strong> <code>estimate_dzd</code> alone overstates what the model knows —
 identical configurations in the training data sell 2–9× apart. Observed interval coverage is
-73.0% against a nominal 80%.</p>
+72.4% against a nominal 80%.</p>
 <p>With <code>?explain=true</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">"contributions"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">  </span><span class="p">{</span><span class="nt">"feature"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cpu_mark"</span><span class="p">,</span><span class="w"> </span><span class="nt">"contribution"</span><span class="p">:</span><span class="w"> </span><span class="mf">-0.0960</span><span class="p">},</span>

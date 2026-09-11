@@ -71,6 +71,13 @@ plus the accuracy repairs and the missing deliverable identified in the audit.
   provenance; nothing loads them.
 - **Predictions clamped** to the trained price band. A Ridge extrapolation previously
   overflowed `expm1` to infinity and poisoned every aggregate metric.
+- **`early_stopping` set explicitly.** Its `'auto'` default enables early stopping only above
+  10,000 samples, so the 60% comparison fit trained fully while the 80% refit that becomes the
+  shipped artifact early-stopped and held back a further 10% — the artifact was trained
+  differently from the model whose metrics were reported. Fixing it took the shipped model
+  from R² 0.821 / MAE 19,239 to **0.839 / 18,017**.
+- **Monotonic constraints actually enforced.** They were declared in the config and computed
+  by a helper nothing called, while the docs claimed they applied.
 
 ### Fixed — reproducibility
 
@@ -108,7 +115,7 @@ Each of these was surfaced by the new pandera contracts or the generated data ca
 
 ### Known limitations
 
-- Prediction intervals under-cover: **73.0%** observed against a nominal 80%. Reported as
+- Prediction intervals under-cover: **72.4%** observed against a nominal 80%. Reported as
   measured rather than tuned; conformal prediction is the next step.
 - The clustering rebuild (Gower distance, UMAP→HDBSCAN, silhouette in the clustering space,
   bootstrap stability) is **not** done. Only the scaler double-fit and the `n_init`

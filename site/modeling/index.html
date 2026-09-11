@@ -1108,6 +1108,13 @@ the target.</p>
 natively, and not imputing is the point of the condition fix. Categoricals are one-hot
 encoded with <code>handle_unknown="ignore"</code> and <code>min_frequency=20</code>, so an unseen city at inference
 time cannot raise.</p>
+<p><code>early_stopping</code> is set <strong>explicitly to False</strong> rather than left at its <code>'auto'</code> default.
+<code>'auto'</code> enables early stopping only above 10,000 samples, which meant the 60% comparison fit
+(9,753 rows) trained for the full <code>max_iter</code> while the 80% refit that becomes the shipped
+artifact (13,004 rows) early-stopped <em>and</em> held back a further 10% internally. The artifact
+was therefore trained differently from the model whose metrics were reported — silently, as a
+function of split size. Fixing it improved the shipped artifact from R² 0.821 / MAE 19,239 to
+0.839 / 18,017. Regularisation comes from <code>l2_regularization</code> and <code>max_leaf_nodes</code> instead.</p>
 <p>Monotonic constraints are <strong>enforced</strong> for <code>RAM_SIZE</code>, <code>SSD_SIZE</code>, <code>cpu_mark</code> and
 <code>gpu_g3d_mark</code> — more must never mean cheaper. Beyond correctness this keeps the
 "what would raise the value" panel from producing an embarrassing recommendation.</p>
@@ -1264,19 +1271,20 @@ hardest exactly where the model would otherwise extrapolate.</p>
 <tr>
 <td>All rows</td>
 <td>3,251</td>
-<td>0.8210</td>
-<td>19,239</td>
+<td>0.8394</td>
+<td>18,017</td>
 </tr>
 <tr>
 <td>Excluding <code>price_unit_ambiguous</code></td>
 <td>3,202</td>
-<td>0.8210</td>
-<td>19,158</td>
+<td>0.8397</td>
+<td>17,897</td>
 </tr>
 </tbody>
 </table>
 <p>247 rows (1.6%) had their target influenced by a feature-derived estimate. Dropping them
-leaves R² unchanged to four decimal places. The sharpest methodological criticism of the original is now a
+moves R² by 0.0003 — in the <em>favourable</em> direction, but by an amount indistinguishable from
+noise on a 3,251-row test set. The sharpest methodological criticism of the original is now a
 demonstrated non-issue rather than an open question.</p>
 <h2 id="prediction-intervals">Prediction intervals<a class="headerlink" href="#prediction-intervals" title="Permanent link">&para;</a></h2>
 <p>Three <code>HistGradientBoosting</code> quantile models at q = 0.1 / 0.5 / 0.9.</p>
@@ -1294,11 +1302,11 @@ demonstrated non-issue rather than an open question.</p>
 </tr>
 <tr>
 <td><strong>Observed coverage</strong></td>
-<td><strong>73.0%</strong></td>
+<td><strong>72.4%</strong></td>
 </tr>
 <tr>
 <td>Median width</td>
-<td>36,146 DZD (37% of price)</td>
+<td>33,959 DZD (36% of price)</td>
 </tr>
 </tbody>
 </table>

@@ -145,6 +145,14 @@ def build_pipeline(
             min_samples_leaf=20,
             l2_regularization=1.0,
             monotonic_cst=monotonic_constraints(),
+            # Explicit, not 'auto'. The default enables early stopping only
+            # above 10,000 samples, so a 60% training split (9.7k rows) trained
+            # for the full max_iter while the 80% refit (13k rows) early-stopped
+            # AND held back another 10% internally - the shipped artifact was
+            # trained differently from the model whose metrics were reported,
+            # silently, as a function of split size. Regularisation comes from
+            # l2_regularization and max_leaf_nodes instead.
+            early_stopping=False,
             random_state=CONFIG.model.random_state,
         )
 
@@ -188,6 +196,7 @@ def build_quantile_pipelines(
             # The interval bounds must move the same way the point estimate
             # does; an upper bound that falls when RAM rises is indefensible.
             monotonic_cst=monotonic_constraints(),
+            early_stopping=False,
             random_state=CONFIG.model.random_state,
         )
         pipelines[q] = build_pipeline(estimator=estimator)
