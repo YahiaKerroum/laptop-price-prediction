@@ -96,7 +96,8 @@ inspectable, not because it works. Nothing loads it.
 Rolling back is editing one file:
 
 ```bash
-echo "v20260911T1150" > models/latest
+ls models/                      # pick the version to go back to
+echo "v20260904T0912" > models/latest
 curl -X POST localhost:8000/reload
 ```
 

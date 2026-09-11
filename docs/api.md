@@ -167,7 +167,7 @@ request. Cache or precompute before exposing it to real traffic.
 Re-read `models/latest` without restarting the container. Use after training a new version.
 
 ```json
-{"reloaded": true, "model_version": "v20260911T0204", "error": null}
+{"reloaded": true, "model_version": "v20260918T0741", "error": null}
 ```
 
 ---
