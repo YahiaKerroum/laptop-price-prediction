@@ -36,12 +36,14 @@ from laptop_price.clustering.metrics import (
 )
 from laptop_price.clustering.naming import describe_segments, name_segment
 from laptop_price.clustering.segment import (
+    Embedding,
     SegmentationResult,
     embed,
     segment_market,
 )
 
 __all__ = [
+    "Embedding",
     "SegmentationResult",
     "cluster_metrics",
     "compare_clusterings",

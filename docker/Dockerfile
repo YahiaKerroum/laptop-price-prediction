@@ -19,6 +19,10 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    # The scientific wheels are large; on a slow link pip's 15s default read
+    # timeout aborts the build partway through. Be patient instead.
+    PIP_DEFAULT_TIMEOUT=120 \
+    PIP_RETRIES=10 \
     LAPTOP_PRICE_ROOT=/app \
     MPLBACKEND=Agg
 
@@ -32,7 +36,16 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# xgboost declares nvidia-nccl-cu12 on linux/x86_64: 342 MB of CUDA multi-GPU
+# collectives that a CPU-only image never loads. Downloading it is the single
+# most likely step of this build to fail on a slow link, and it adds ~350 MB to
+# the image, so xgboost is installed without its dependency closure. Everything
+# it actually needs (numpy, scipy) is pinned in requirements.txt and installed
+# by the first command, which keeps requirements.txt the single source of truth.
+RUN grep -v '^xgboost' requirements.txt > /tmp/requirements-no-xgb.txt \
+    && pip install --no-cache-dir -r /tmp/requirements-no-xgb.txt \
+    && pip install --no-cache-dir --no-deps "$(grep '^xgboost' requirements.txt)" \
+    && rm /tmp/requirements-no-xgb.txt
 
 COPY pyproject.toml README.md ./
 COPY src/ ./src/

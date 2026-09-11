@@ -78,8 +78,11 @@ def cluster_metrics(
     }
 
     if len(unique) < 2:
-        result |= {"silhouette": float("nan"), "davies_bouldin": float("nan"),
-                   "calinski_harabasz": float("nan")}
+        result |= {
+            "silhouette": float("nan"),
+            "davies_bouldin": float("nan"),
+            "calinski_harabasz": float("nan"),
+        }
         return result
 
     scored = matrix[clustered]
@@ -87,9 +90,7 @@ def cluster_metrics(
 
     sample_size = min(SILHOUETTE_SAMPLE, len(scored))
     result["silhouette"] = float(
-        silhouette_score(
-            scored, scored_labels, sample_size=sample_size, random_state=random_state
-        )
+        silhouette_score(scored, scored_labels, sample_size=sample_size, random_state=random_state)
     )
     result["davies_bouldin"] = float(davies_bouldin_score(scored, scored_labels))
     result["calinski_harabasz"] = float(calinski_harabasz_score(scored, scored_labels))
@@ -135,8 +136,12 @@ def stability_score(
         scores.append(float(adjusted_rand_score(reference[index], labels)))
 
     if not scores:  # pragma: no cover
-        return {"mean_ari": float("nan"), "std_ari": float("nan"),
-                "min_ari": float("nan"), "n_bootstrap": 0}
+        return {
+            "mean_ari": float("nan"),
+            "std_ari": float("nan"),
+            "min_ari": float("nan"),
+            "n_bootstrap": 0,
+        }
 
     return {
         "mean_ari": float(np.mean(scores)),

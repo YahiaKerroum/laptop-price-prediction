@@ -35,7 +35,7 @@ plus the accuracy repairs and the missing deliverable identified in the audit.
 - **Streamlit app** — spec form → price range with explanation, deal feed, market charts.
 - **Docker** — multi-stage image (`dev`/`lab`/`api`/`app`) and a compose stack with profiles.
 - **Makefile** — `build`, `pipeline`, `train`, `test`, `verify`, `notebooks`, `serve`, `docs`.
-- **188 tests** over the parsers, splits, metrics, and the artifact round-trip.
+- **206 tests** over the parsers, splits, metrics, and the artifact round-trip.
 - **pandera contracts** asserted at stage boundaries.
 - **Config file** (`config.yaml`) replacing magic numbers scattered across notebook cells.
 - **Documentation**: architecture, pipeline, data dictionary, modelling, model card, API,
@@ -112,6 +112,30 @@ Each of these was surfaced by the new pandera contracts or the generated data ca
   Swapping two storage values achieves nothing; the docstring's behaviour is now implemented.
 - `created_at` is `"2021 10 01T…"`, space-separated rather than ISO-hyphenated, which some
   pandas versions silently parse to `NaT`.
+
+### Added - market segmentation (roadmap §5)
+
+- `src/laptop_price/clustering/` and `notebooks/10_market_segmentation.ipynb`, replacing the
+  degenerate original result. Notebooks 05 and 07 are kept unchanged for comparison.
+- **Re-scored the original honestly.** Fitting the scaler once and measuring silhouette in the
+  space actually clustered turns the reported **0.9796 into 0.150**. The 0.98 was a property
+  of the PCA projection it was measured in, not of the clustering.
+- `QuantileTransformer` instead of `RobustScaler`, which was a no-op on `HDD_SIZE` (zero IQR -
+  92% of listings have no HDD) and let raw magnitudes dominate every distance.
+- Price is **excluded from the feature set** and supervises the embedding instead. Segmenting
+  on price and then reporting that segments differ in price is circular.
+- **HDBSCAN over a UMAP embedding**, so a genuinely unusual listing can belong to no segment
+  rather than being forced into one. UMAP is optional; the PCA fallback labels itself as such
+  in every metrics table, because the two paths are not comparable.
+- **Bootstrap stability** (adjusted Rand index over 20 resamples) reported for every
+  clustering. This is the diagnostic that would have caught the original immediately.
+- **Silhouette is shown not to be a selection criterion**: sweeping `min_cluster_size` raises
+  it from 0.561 to 0.634 while the largest cluster grows from 31% to 63% of the market.
+- Segments are **named and profiled** from their centroid statistics, with within-segment
+  price spread, and `price_model_by_segment` tests whether segmenting actually improves
+  pricing.
+- Gower distance implemented and tested for mixed-type work; it refuses oversized inputs
+  rather than allocating a 2.1 GB matrix.
 
 ### Known limitations
 

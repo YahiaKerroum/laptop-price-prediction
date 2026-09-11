@@ -63,9 +63,7 @@ def gower_vector(
     Returns an array of length ``len(frame)`` in [0, 1].
     """
     numeric, categorical = _split_columns(frame)
-    weight = np.array(
-        [(weights or {}).get(c, 1.0) for c in [*numeric, *categorical]], dtype=float
-    )
+    weight = np.array([(weights or {}).get(c, 1.0) for c in [*numeric, *categorical]], dtype=float)
 
     parts = []
     if numeric:
@@ -107,16 +105,14 @@ def gower_matrix(
         )
 
     numeric, categorical = _split_columns(df)
-    weight = np.array(
-        [(weights or {}).get(c, 1.0) for c in [*numeric, *categorical]], dtype=float
-    )
+    weight = np.array([(weights or {}).get(c, 1.0) for c in [*numeric, *categorical]], dtype=float)
     n = len(df)
     total = np.zeros((n, n), dtype=float)
 
     if numeric:
         values = df[numeric].to_numpy(dtype=float)
         spans = _numeric_ranges(values)
-        for index, column in enumerate(numeric):
+        for index in range(len(numeric)):
             column_values = values[:, index]
             diff = np.abs(column_values[:, None] - column_values[None, :]) / spans[index]
             # A missing value is maximally distant from everything, including

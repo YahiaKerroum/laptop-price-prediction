@@ -151,8 +151,11 @@ def format_segments(report: pd.DataFrame) -> str:
         view["P75/P25"] = report["price_iqr_ratio"].map(
             lambda v: f"{v:.2f}x" if pd.notna(v) else "-"
         )
-    for column, label in (("median_cpu_mark", "cpu"), ("median_gpu_g3d_mark", "gpu"),
-                          ("median_RAM_SIZE", "ram")):
+    for column, label in (
+        ("median_cpu_mark", "cpu"),
+        ("median_gpu_g3d_mark", "gpu"),
+        ("median_RAM_SIZE", "ram"),
+    ):
         if column in report:
             view[label] = report[column].map(lambda v: f"{v:,.0f}" if pd.notna(v) else "-")
     return view.to_string(index=False)
@@ -188,9 +191,7 @@ def price_model_by_segment(
         if segment < 0 or len(group) < min_size:
             continue
         index = group.index
-        local = cross_val_predict(
-            build_pipeline(), features.loc[index], target.loc[index], cv=3
-        )
+        local = cross_val_predict(build_pipeline(), features.loc[index], target.loc[index], cv=3)
         specialist = regression_metrics(target.loc[index], local, label=f"segment {segment}")
         generalist = regression_metrics(
             target.loc[index], global_predictions[frame.index.get_indexer(index)]

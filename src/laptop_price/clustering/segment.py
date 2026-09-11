@@ -101,7 +101,10 @@ def build_preprocessor() -> ColumnTransformer:
     categorical = Pipeline(
         [
             ("impute", SimpleImputer(strategy="constant", fill_value="UNKNOWN")),
-            ("encode", OneHotEncoder(handle_unknown="ignore", min_frequency=100, sparse_output=False)),
+            (
+                "encode",
+                OneHotEncoder(handle_unknown="ignore", min_frequency=100, sparse_output=False),
+            ),
         ]
     )
     return ColumnTransformer(
@@ -113,6 +116,32 @@ def build_preprocessor() -> ColumnTransformer:
     )
 
 
+def umap_available() -> bool:
+    """Whether ``umap-learn`` can be imported."""
+    try:
+        import umap  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+@dataclass(frozen=True)
+class Embedding:
+    """A reduced space, and an honest record of how it was produced."""
+
+    coordinates: np.ndarray
+    method: str
+    #: Whether price actually supervised the embedding. The fallback cannot,
+    #: so this is False there even when ``supervised=True`` was requested -
+    #: reporting a run as "supervised" when nothing supervised it would put a
+    #: false label on every metric derived from it.
+    supervised: bool
+
+    @property
+    def label(self) -> str:
+        return f"{self.method}, {'supervised' if self.supervised else 'unsupervised'}"
+
+
 def embed(
     matrix: np.ndarray,
     *,
@@ -121,26 +150,63 @@ def embed(
     n_neighbors: int = 30,
     min_dist: float = 0.0,
     random_state: int | None = None,
-) -> np.ndarray:
-    """UMAP embedding, optionally supervised by price.
+    method: str = "auto",
+) -> Embedding:
+    """Reduce to a space HDBSCAN can work in.
 
-    ``min_dist=0.0`` is deliberate: it lets UMAP pack points tightly, which is
-    what HDBSCAN wants. A larger value produces a prettier scatter plot and a
+    UMAP is the method this analysis is written around: it preserves local
+    neighbourhood structure, which is what density clustering needs, and it can
+    be supervised by price so that segments group by price behaviour rather than
+    by raw hardware similarity.
+
+    It is also an optional dependency - it pulls numba and llvmlite, and on a
+    slow connection it is the one part of this build that reliably fails. Rather
+    than let that break the package, ``method="auto"`` falls back to PCA and
+    **says so**, in the returned method name and therefore in every metrics table
+    built from it.
+
+    The fallback is a real degradation, not an equivalent: PCA optimises for
+    global variance and flattens exactly the local structure clustering depends
+    on, and it cannot use the price supervision. Results from the two paths are
+    not comparable. Install ``umap-learn`` for the analysis as designed.
+
+    ``min_dist=0.0`` is deliberate for UMAP: it lets points pack tightly, which
+    is what HDBSCAN wants. A larger value gives a prettier scatter plot and a
     worse clustering.
     """
-    import umap
-
     random_state = CONFIG.model.random_state if random_state is None else random_state
-    reducer = umap.UMAP(
-        n_components=n_components,
-        n_neighbors=n_neighbors,
-        min_dist=min_dist,
-        metric="euclidean",
-        random_state=random_state,
-        verbose=False,
+
+    if method == "umap" or (method == "auto" and umap_available()):
+        import umap
+
+        reducer = umap.UMAP(
+            n_components=n_components,
+            n_neighbors=n_neighbors,
+            min_dist=min_dist,
+            metric="euclidean",
+            random_state=random_state,
+            verbose=False,
+        )
+        # Supervised UMAP takes log price; the raw scale would dominate.
+        supervision = np.log1p(target) if target is not None else None
+        return Embedding(
+            coordinates=reducer.fit_transform(matrix, y=supervision),
+            method="UMAP",
+            supervised=supervision is not None,
+        )
+
+    from sklearn.decomposition import PCA
+
+    # More components than the UMAP path uses: HDBSCAN copes with ten dimensions,
+    # and PCA needs the extra room because it spreads the same information over
+    # more axes than UMAP does.
+    components = min(10, matrix.shape[1])
+    reducer = PCA(n_components=components, random_state=random_state)
+    return Embedding(
+        coordinates=reducer.fit_transform(matrix),
+        method=f"PCA-{components}d (fallback: umap-learn not installed)",
+        supervised=False,
     )
-    # Supervised UMAP: log price, because the raw scale would dominate.
-    return reducer.fit_transform(matrix, y=np.log1p(target) if target is not None else None)
 
 
 def segment_market(
@@ -169,7 +235,8 @@ def segment_market(
     matrix = preprocessor.fit_transform(df)
 
     target = df[TARGET].to_numpy(dtype=float) if (supervised and TARGET in df) else None
-    embedding = embed(matrix, target=target, random_state=random_state)
+    reduced = embed(matrix, target=target, random_state=random_state)
+    embedding = reduced.coordinates
 
     clusterer = HDBSCAN(
         min_cluster_size=min_cluster_size,
@@ -178,9 +245,10 @@ def segment_market(
     )
     labels = clusterer.fit_predict(embedding)
 
-    space = f"UMAP({'supervised' if target is not None else 'unsupervised'}, 2D)"
+    space = reduced.label
     metrics = cluster_metrics(embedding, labels, space=space, random_state=random_state)
-    metrics["method"] = f"UMAP -> HDBSCAN ({'supervised' if target is not None else 'unsupervised'})"
+    metrics["method"] = f"{reduced.method} -> HDBSCAN"
+    metrics["supervised"] = reduced.supervised
 
     if with_stability:
         metrics |= stability_score(
@@ -218,7 +286,8 @@ def segment_with_mixture(
     preprocessor = build_preprocessor()
     matrix = preprocessor.fit_transform(df)
     target = df[TARGET].to_numpy(dtype=float) if TARGET in df else None
-    embedding = embed(matrix, target=target, random_state=random_state)
+    reduced = embed(matrix, target=target, random_state=random_state)
+    embedding = reduced.coordinates
 
     mixture = GaussianMixture(
         n_components=n_components,
@@ -228,9 +297,10 @@ def segment_with_mixture(
     )
     labels = mixture.fit_predict(embedding)
 
-    space = "UMAP(supervised, 2D)"
+    space = reduced.label
     metrics = cluster_metrics(embedding, labels, space=space, random_state=random_state)
-    metrics["method"] = f"UMAP -> GaussianMixture (k={n_components})"
+    metrics["method"] = f"{reduced.method} -> GaussianMixture (k={n_components})"
+    metrics["supervised"] = reduced.supervised
     metrics["bic"] = float(mixture.bic(embedding))
 
     return SegmentationResult(
@@ -291,10 +361,12 @@ def segment_with_kmeans(
 __all__ = [
     "SEGMENT_CATEGORICAL",
     "SEGMENT_NUMERIC",
+    "Embedding",
     "SegmentationResult",
     "build_preprocessor",
     "embed",
     "segment_market",
     "segment_with_kmeans",
     "segment_with_mixture",
+    "umap_available",
 ]

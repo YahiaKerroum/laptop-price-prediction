@@ -220,6 +220,69 @@ It lives in listing text, seller reputation, photo count, negotiability and urge
 which were scraped. Squeezing another 0.01 out of a better gradient booster is a rounding
 error next to getting listing text into the model.
 
+## Market segmentation
+
+`notebooks/05` and `07` are the original clustering work, kept unchanged.
+`notebooks/10_market_segmentation.ipynb` replaces them, built on
+`src/laptop_price/clustering/`.
+
+### What the original reported, and what it was
+
+`05_clustering.ipynb` reported a **silhouette of 0.9796** at k=4. The cluster sizes give it
+away: **14,161 / 498 / 550**. That is a handful of extreme outliers peeled off one blob.
+
+Re-scoring the same approach honestly - scaler fitted once, silhouette measured in the space
+actually clustered rather than in a PCA projection - gives **0.150** for K-Means at k=4.
+The 0.98 was never a property of the clustering. It was a property of the projection it was
+measured in, plus the degenerate partition that unscaled magnitudes produced.
+
+Three specific causes, all fixed:
+
+| Cause | Fix |
+|---|---|
+| `RobustScaler` on zero-IQR columns (`HDD_SIZE` is 0 at both quartiles - 92% of listings have no HDD), so scaling was a no-op and raw magnitudes dominated | `QuantileTransformer`, which maps every column onto the same bounded scale regardless of how degenerate its spread |
+| Raw price (1,800 to 3,550,000) fed in alongside `SSD_SIZE`, so distance lived in one dimension | Price is excluded from the feature set; it *supervises* the embedding instead. Segmenting on price and then reporting that segments differ in price is circular |
+| The train-fitted scaler had `fit_transform` called on it again over the full dataset | Fitted once |
+
+### Silhouette is not a selection criterion
+
+Sweeping `min_cluster_size` shows the trap directly:
+
+| min_cluster_size | k | Silhouette | Largest share | Noise |
+|---|---|---|---|---|
+| 162 (1%) | 16 | 0.561 | **30.6%** | 23.6% |
+| 400 | 6 | 0.567 | 62.6% | 7.4% |
+| 800 | 4 | **0.634** | 63.3% | 8.4% |
+
+**The silhouette improves as clusters merge and one grows past 60% of the market.** Picking
+the best silhouette reproduces the original's mistake in a milder form. The balanced setting
+scores lower and is the one that segments anything, which is why every clustering is reported
+with its size distribution and bootstrap stability beside the score.
+
+### Bootstrap stability
+
+Each clustering is refit on 20 subsamples at 80%, and each subsample's labels are compared
+with the full fit's labels for those rows by adjusted Rand index. This is the diagnostic that
+would have caught the original immediately: peeling outliers off a blob is not stable,
+because which points count as extreme moves with the sample.
+
+### Segments are named
+
+A cluster id means nothing. Each segment gets a label derived from its median specs against
+the market - "premium gaming / workstation", "lower-mid budget bureautique" - together with
+its size, median price, and the price spread *within* it. A segment whose members price alike
+is a real segment; one spanning several multiples is a bag of leftovers.
+
+The loop closes with `price_model_by_segment`: a model fitted inside each segment, compared
+against one global model on the same rows. Segmentation that measurably improves pricing
+means something; segmentation that does not is decoration.
+
+### Not done
+
+Consensus clustering across algorithms and seeds (roadmap §5) is not implemented. Gower
+distance is implemented and tested but is not used for the main segmentation - a full
+pairwise matrix over 16,255 listings is 2.1 GB, so it is for subsampled diagnostics.
+
 ## Anomaly detection
 
 | Component | Method |
