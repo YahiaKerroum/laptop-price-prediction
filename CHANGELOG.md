@@ -35,7 +35,7 @@ plus the accuracy repairs and the missing deliverable identified in the audit.
 - **Streamlit app** — spec form → price range with explanation, deal feed, market charts.
 - **Docker** — multi-stage image (`dev`/`lab`/`api`/`app`) and a compose stack with profiles.
 - **Makefile** — `build`, `pipeline`, `train`, `test`, `verify`, `notebooks`, `serve`, `docs`.
-- **160 tests** over the parsers, splits, metrics, and the artifact round-trip.
+- **187 tests** over the parsers, splits, metrics, and the artifact round-trip.
 - **pandera contracts** asserted at stage boundaries.
 - **Config file** (`config.yaml`) replacing magic numbers scattered across notebook cells.
 - **Documentation**: architecture, pipeline, data dictionary, modelling, model card, API,

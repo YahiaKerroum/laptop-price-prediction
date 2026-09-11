@@ -198,6 +198,7 @@ Not in the original review; surfaced by making the project run.
 | An unbounded component-cost baseline drove R² to **−48,502** via one extreme row | Clipped to the plausible band |
 | A Ridge extrapolation overflowed `expm1` to infinity, poisoning every aggregate metric | Predictions clamped to the trained price band |
 | `cpu_mark` arrives as `"19,108"` — a bare `to_numeric` nulls 98% of it | Thousands separators stripped before coercion |
+| CPU matching silently failed on `"11TH GEN INTEL CORE I5 1135G7"`, a very common listing format: PassMark names carry a `@ 2.40GHz` suffix that listings never do, which broke exact lookups and diluted the fuzzy score to 69.2 against a threshold of 70 | Clock suffix stripped during normalisation; the same fix made the 126-entry typo table actually fire |
 
 ---
 

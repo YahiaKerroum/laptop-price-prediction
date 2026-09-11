@@ -34,10 +34,25 @@ CPU_CORRECTIONS_CSV = paths.MAPPINGS_DIR / "cpu_corrections.csv"
 
 
 def normalize(value: Any) -> str:
-    """Strip vendor noise so ``"Intel Core i7-11800H"`` and ``"i7 11800h"`` agree."""
+    """Strip vendor noise so ``"Intel Core i7-11800H"`` and ``"i7 11800h"`` agree.
+
+    The clock-speed suffix is dropped first. PassMark names carry it
+    (``"Intel Core i5-1135G7 @ 2.40GHz"``) and listings almost never do, and
+    leaving it in breaks matching twice over: an exact lookup on a bare model
+    number misses, and the extra ``2`` / ``40ghz`` tokens dilute
+    ``token_set_ratio`` enough to push a correct match below the threshold.
+    ``"11TH GEN INTEL CORE I5 1135G7"`` scored 69.2 against its own reference
+    row before this - just under the cut - and silently matched an i5-1235U.
+
+    >>> normalize("Intel Core i5-1135G7 @ 2.40GHz")
+    'i5 1135g7'
+    >>> normalize("11TH GEN INTEL CORE I5 1135G7")
+    '11th gen i5 1135g7'
+    """
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return ""
     text = str(value).lower()
+    text = re.split(r"\s*@\s*", text)[0]
     text = re.sub(r"intel|processor|core|cpu", "", text)
     text = text.replace("-", " ")
     text = re.sub(r"[^a-z0-9 ]+", " ", text)
