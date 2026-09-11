@@ -22,6 +22,13 @@ pyod==2.0.2
 # --- association rule mining ---
 mlxtend==0.23.3
 
+# --- market segmentation ---
+# HDBSCAN and the cluster metrics come from scikit-learn 1.5; only the UMAP
+# embedding needs an extra package. Gower distance is implemented in-tree
+# (src/laptop_price/clustering/distances.py) rather than adding a dependency
+# for forty lines of arithmetic.
+umap-learn==0.5.7
+
 # --- fuzzy CPU/GPU name matching ---
 rapidfuzz==3.10.1
 
