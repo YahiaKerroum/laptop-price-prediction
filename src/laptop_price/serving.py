@@ -133,10 +133,18 @@ def predict_one(
     if bundle.quantile_pipelines:
         quantiles = sorted(bundle.quantile_pipelines)
         predictions = {q: float(bundle.quantile_pipelines[q].predict(frame)[0]) for q in quantiles}
-        low, high = predictions[quantiles[0]], predictions[quantiles[-1]]
         # Quantile models are fitted independently and can cross on sparse
         # regions; sorting restores a coherent interval.
-        low, high = sorted((low, high))
+        low, high = sorted((predictions[quantiles[0]], predictions[quantiles[-1]]))
+
+        # The point estimate comes from a separate squared-error model, so on
+        # about 1.4% of listings it lands outside the quantile interval. Showing
+        # "most likely 105,200, range 111,200-175,500" is not defensible, so
+        # widen the interval to contain the point rather than moving the point:
+        # the interval is the softer claim, and the point estimate is what the
+        # reported metrics were actually measured on.
+        low, high = min(low, point), max(high, point)
+
         result["range_dzd"] = [round(low, -2), round(high, -2)]
         result["quantiles"] = {str(q): round(v, -2) for q, v in predictions.items()}
 

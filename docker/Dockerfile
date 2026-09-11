@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-#
 # Multi-stage image for the laptop-price project.
 #
 #   base  -> pinned scientific stack + the laptop_price package
@@ -9,6 +7,10 @@
 #
 # Python is pinned to 3.11 because the notebooks are pandas-2 era code; see
 # docs/deployment.md for why this matters.
+#
+# Deliberately no `# syntax=` directive: it makes every build fetch a frontend
+# image from Docker Hub first, which fails on a slow or restricted network even
+# though nothing here needs BuildKit-specific syntax.
 
 # ----------------------------------------------------------------------------
 FROM python:3.11-slim AS base

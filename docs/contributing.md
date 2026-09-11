@@ -13,7 +13,7 @@ make test
 
 ```bash
 make lint     # ruff + black --check
-make test     # 158 tests
+make test     # 160 tests
 make verify   # repo still matches the original project folder
 ```
 

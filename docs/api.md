@@ -99,6 +99,12 @@ curl -X POST localhost:8000/predict \
 identical configurations in the training data sell 2–9× apart. Observed interval coverage is
 72.4% against a nominal 80%.
 
+The point estimate is guaranteed to lie inside `range_dzd`. It comes from a squared-error
+model while the bounds come from independently fitted quantile models, and on about 1.4% of
+listings they disagree; the interval is widened to contain the point rather than the point
+being moved, because the point is what the reported metrics were measured on. `quantiles`
+shows the raw, unwidened quantile predictions.
+
 With `?explain=true`:
 
 ```json

@@ -81,7 +81,7 @@ src/laptop_price/
 models/        versioned bundles; `latest` points at the current one
 reports/       the three PDFs, the presentation, mined rules, executed notebooks
 docs/          architecture, data dictionary, modelling, deployment, audit, roadmap
-tests/         158 tests over the parsers, splits, metrics and the artifact round-trip
+tests/         160 tests over the parsers, splits, metrics and the artifact round-trip
 ```
 
 ---
@@ -134,7 +134,7 @@ sharpest methodological criticism of the original into a demonstrated non-issue.
 ```bash
 make predict ARGS="--ram 16 --ssd 512 --cpu-mark 19776 --gpu-mark 16758 --brand THINKPAD"
 make deals                 # today's candidate bargains
-make test                  # 158 tests
+make test                  # 160 tests
 make verify                # prove the repo matches the original project folder
 make notebooks             # execute all 9 notebooks top-to-bottom
 ```

@@ -254,3 +254,53 @@ class TestRulesCheck:
         summary = summarise_violations(consistency)
         assert summary["rule A"] == 2
         assert summary["rule B"] == 1
+
+
+class TestPredictionCoherence:
+    """The point estimate must never fall outside the range shown beside it.
+
+    The point comes from a squared-error model and the bounds from independently
+    fitted quantile models, so on ~1.4% of listings they disagree. "Most likely
+    105,200, range 111,200-175,500" is not a defensible thing to show a user.
+    """
+
+    def test_point_estimate_lies_inside_the_range(self, matrix_and_bundle):
+        from laptop_price.models.pipeline import build_quantile_pipelines
+        from laptop_price.models.train import FEATURE_COLUMNS
+        from laptop_price.serving import predict_one
+
+        matrix, bundle = matrix_and_bundle
+        bundle.quantile_pipelines = build_quantile_pipelines(quantiles=(0.1, 0.9))
+        for pipeline in bundle.quantile_pipelines.values():
+            pipeline.fit(matrix[FEATURE_COLUMNS], matrix[TARGET])
+
+        import laptop_price.serving as serving
+
+        serving.get_bundle.cache_clear()
+        original = serving.get_bundle
+        serving.get_bundle = lambda version=None: bundle
+        try:
+            for _, row in matrix[FEATURE_COLUMNS].head(40).iterrows():
+                result = predict_one(row.to_dict())
+                low, high = result["range_dzd"]
+                assert low <= result["estimate_dzd"] <= high, result
+        finally:
+            serving.get_bundle = original
+
+    def test_range_is_ordered(self, matrix_and_bundle):
+        import laptop_price.serving as serving
+        from laptop_price.models.pipeline import build_quantile_pipelines
+        from laptop_price.models.train import FEATURE_COLUMNS
+
+        matrix, bundle = matrix_and_bundle
+        bundle.quantile_pipelines = build_quantile_pipelines(quantiles=(0.1, 0.9))
+        for pipeline in bundle.quantile_pipelines.values():
+            pipeline.fit(matrix[FEATURE_COLUMNS], matrix[TARGET])
+
+        original = serving.get_bundle
+        serving.get_bundle = lambda version=None: bundle
+        try:
+            result = serving.predict_one(matrix[FEATURE_COLUMNS].iloc[0].to_dict())
+            assert result["range_dzd"][0] <= result["range_dzd"][1]
+        finally:
+            serving.get_bundle = original
