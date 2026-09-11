@@ -38,7 +38,7 @@ original used. The loop is bounded — the original's `while` had no iteration c
 | Those rows flagged | no | **yes** (`price_unit_ambiguous`) |
 | Agreement with the original target | — | 99.21% |
 
-Excluding the flagged rows from the test set moves R² from 0.8279 to 0.8278. The criticism
+Excluding the flagged rows from the test set leaves R² at 0.8210 either way. The criticism
 is now a demonstrated non-issue rather than an open question.
 
 `estimated_component_cost` is retained as a *feature* and as an evaluation baseline, where it
@@ -88,7 +88,7 @@ re-encoding of two features the model already had, with 76% of rows in one bucke
 **Resolution.** All three restored, plus derived temporal features. `model_family` retained
 only as a comparison column.
 
-**Measured effect:** MAE fell from 21,070 to 18,028 on the comparable split — **−14%**,
+**Measured effect:** MAE fell from 21,070 to 18,126 on the comparable split — **−14%**,
 better than the −11% the original review predicted.
 
 ---
@@ -98,7 +98,7 @@ better than the −11% the original review predicted.
 16,255 rows carry only **6,944 unique spec signatures**.
 
 **Resolution.** A `grouped_split` on spec signature is now reported alongside the random
-split. R² 0.810 grouped vs 0.848 random — the duplicates were *not* inflating the score much.
+split. R² 0.810 grouped vs 0.846 random — the duplicates were *not* inflating the score much.
 Worth being able to say having actually checked.
 
 Two things do follow: effective sample size is closer to 6,944 than 16,255, and there is a
@@ -152,7 +152,7 @@ test (fit → save → load → predict) is part of the suite. The old pickles a
 | Polynomial features computed (10→55) and never used | **Removed** |
 | `cell 40` referenced undefined `best_grid` — the notebook was not reproducible top-to-bottom | **Fixed** → `xgb_grid` |
 | Duplicate XGBoost grid search silently rebound `xgb_grid` to a different space | **Disabled**, with a note |
-| No MAPE anywhere | **Fixed.** MAPE and median APE are first-class; median APE is 12.2% |
+| No MAPE anywhere | **Fixed.** MAPE and median APE are first-class; median APE is 12.1% |
 | `n_init=1` in the k search vs `n_init=20` for the final fit | **Fixed** |
 | `data_cleaned.csv` and `original_data.csv` byte-identical | **Fixed.** Duplicate dropped, recorded in the data dictionary |
 | `cpu_generation_normalized` dropped for being 3.9% NaN | **Restored** — the model handles NaN |
@@ -206,9 +206,9 @@ Not in the original review; surfaced by making the project run.
 | Metric | Original | Now (comparable split) | Now (honest headline) |
 |---|---|---|---|
 | Split | random | random | **time-based** |
-| R² | 0.827 | 0.848 | 0.810 |
-| MAE | 21,070 | **18,028** | 21,319 |
-| Median APE | not reported | 10.6% | **12.2%** |
+| R² | 0.827 | 0.846 | 0.817 |
+| MAE | 21,070 | **18,126** | 21,051 |
+| Median APE | not reported | 10.4% | **12.1%** |
 
 The headline is the time-based figure and it is *lower* than the original's. That is not a
 regression — it is the first number in this project that answers "can we price a laptop

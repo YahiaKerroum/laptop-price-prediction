@@ -46,7 +46,7 @@ plus the accuracy repairs and the missing deliverable identified in the audit.
 
 - **Restored `created_at`, `city` and `model_name`**, deleted by the original with no stated
   reason. City median price spans 2.35×; listings span seven years of dinar inflation.
-  **MAE fell from 21,070 to 18,028 DZD (−14%)** on the comparable split.
+  **MAE fell from 21,070 to 18,126 DZD (−14%)** on the comparable split.
 - **`spec_Etat` missing is now NaN, not 0.** 41% of rows were being placed at the bottom of a
   1–2–3 ordinal scale when their true price level sits between buckets 2 and 3.
 - **Rescoped the price-unit correction.** A price-only rule settles 97.62% of rows with zero
@@ -55,8 +55,8 @@ plus the accuracy repairs and the missing deliverable identified in the audit.
 - **Applied the troll-price filter.** It existed but was dead code — it nulled a column the
   next section recomputed from scratch. 62 placeholder prices removed.
 - **Added MAPE and median APE**, plus three baselines (global median, median of identical
-  spec, component-cost sum). Median APE is 12.2%.
-- **Added group-aware and time-based splits.** The time-based figure (R² 0.810) is now the
+  spec, component-cost sum). Median APE is 12.1%.
+- **Added group-aware and time-based splits.** The time-based figure (R² 0.817) is now the
   headline; it is lower than the random-split number and is the honest one.
 - **Removed** the unused polynomial expansion and the never-called `infer_laptop_state()`,
   which read `price_preview` to infer condition and would have leaked the target.
@@ -108,7 +108,7 @@ Each of these was surfaced by the new pandera contracts or the generated data ca
 
 ### Known limitations
 
-- Prediction intervals under-cover: **72.6%** observed against a nominal 80%. Reported as
+- Prediction intervals under-cover: **73.0%** observed against a nominal 80%. Reported as
   measured rather than tuned; conformal prediction is the next step.
 - The clustering rebuild (Gower distance, UMAP→HDBSCAN, silhouette in the clustering space,
   bootstrap stability) is **not** done. Only the scaler double-fit and the `n_init`

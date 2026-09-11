@@ -68,7 +68,7 @@ docker run -e LAPTOP_PRICE_CONFIG=/app/my-config.yaml ...
 Both service targets declare a `HEALTHCHECK`. `GET /health` distinguishes two states:
 
 ```json
-{"status": "ok", "model_loaded": true, "model_version": "v20260911T0203"}
+{"status": "ok", "model_loaded": true, "model_version": "v20260911T1237"}
 {"status": "degraded", "model_loaded": false, "model_version": null}
 ```
 
@@ -80,7 +80,7 @@ instead of crash-looping. Prediction endpoints return **503** with an actionable
 ```
 models/
 ├── latest                   plain-text pointer to the current version
-├── v20260911T0203/
+├── v20260911T1237/
 │   ├── price_pipeline.joblib
 │   ├── quantile_pipelines.joblib
 │   ├── metadata.json
@@ -96,7 +96,7 @@ inspectable, not because it works. Nothing loads it.
 Rolling back is editing one file:
 
 ```bash
-echo "v20260911T0159" > models/latest
+echo "v20260911T1150" > models/latest
 curl -X POST localhost:8000/reload
 ```
 

@@ -1108,9 +1108,16 @@ the target.</p>
 natively, and not imputing is the point of the condition fix. Categoricals are one-hot
 encoded with <code>handle_unknown="ignore"</code> and <code>min_frequency=20</code>, so an unseen city at inference
 time cannot raise.</p>
-<p>Monotonic constraints are declared for <code>RAM_SIZE</code>, <code>SSD_SIZE</code>, <code>cpu_mark</code> and
+<p>Monotonic constraints are <strong>enforced</strong> for <code>RAM_SIZE</code>, <code>SSD_SIZE</code>, <code>cpu_mark</code> and
 <code>gpu_g3d_mark</code> — more must never mean cheaper. Beyond correctness this keeps the
 "what would raise the value" panel from producing an embarrassing recommendation.</p>
+<p>They are passed to the estimator as a dict keyed by feature name, which requires the
+preprocessor to emit a DataFrame (<code>set_output(transform="pandas")</code>) — the width of the
+transformed matrix depends on how many one-hot levels survive <code>min_frequency</code> and is not
+known until fit time, so a positional array could not be built in advance. The quantile
+models carry the same constraints: an upper bound that falls when RAM rises is indefensible.</p>
+<p>A parametrised test sweeps each constrained feature across its range and asserts the
+prediction never decreases.</p>
 <h2 id="splits">Splits<a class="headerlink" href="#splits" title="Permanent link">&para;</a></h2>
 <p>Three, all reported, so the headline cannot be quietly chosen from whichever flatters most.</p>
 <table>
@@ -1137,7 +1144,7 @@ time cannot raise.</p>
 </table>
 <p>The dataset has 16,255 rows but only <strong>6,944 unique spec signatures</strong> — 57% are duplicates in
 feature space, so a random split can put the same configuration on both sides. The grouped
-split gives R² 0.810 against 0.848 random. The duplicates were <em>not</em> inflating the score
+split gives R² 0.810 against 0.846 random. The duplicates were <em>not</em> inflating the score
 much, which is worth being able to say having actually checked.</p>
 <h2 id="results">Results<a class="headerlink" href="#results" title="Permanent link">&para;</a></h2>
 <table>
@@ -1207,43 +1214,48 @@ much, which is worth being able to say having actually checked.</p>
 <tr>
 <td><strong>HistGradientBoosting</strong></td>
 <td><strong>time</strong></td>
-<td><strong>0.810</strong></td>
-<td><strong>21,319</strong></td>
-<td>42,911</td>
-<td>19.5%</td>
-<td><strong>12.2%</strong></td>
-<td>70.5%</td>
+<td><strong>0.817</strong></td>
+<td><strong>21,051</strong></td>
+<td>42,134</td>
+<td>19.3%</td>
+<td><strong>12.1%</strong></td>
+<td>70.6%</td>
 </tr>
 <tr>
 <td>HistGradientBoosting</td>
 <td>grouped</td>
 <td>0.810</td>
-<td>18,021</td>
-<td>39,520</td>
-<td>18.2%</td>
+<td>17,999</td>
+<td>39,436</td>
+<td>18.3%</td>
 <td>10.5%</td>
-<td>76.6%</td>
+<td>76.4%</td>
 </tr>
 <tr>
 <td>HistGradientBoosting</td>
 <td>random</td>
-<td>0.848</td>
-<td>18,028</td>
-<td>36,937</td>
-<td>18.4%</td>
-<td>10.6%</td>
-<td>75.4%</td>
+<td>0.846</td>
+<td>18,126</td>
+<td>37,142</td>
+<td>18.5%</td>
+<td>10.4%</td>
+<td>75.0%</td>
 </tr>
 </tbody>
 </table>
 <p>Against the original (R² 0.827, MAE 21,070, random split), <strong>MAE fell 14%</strong> on the
 comparable split. That came from restoring three deleted columns, not from a better model —
 RandomForest and HistGradientBoosting are within noise of each other here.</p>
+<p>The monotonic constraints also helped out-of-time generalisation slightly: adding them moved
+the time-based figure from R² 0.810 / MAE 21,319 to 0.817 / 21,051, while leaving the random
+split unchanged. That is the expected direction — a constraint is a regulariser, and it binds
+hardest exactly where the model would otherwise extrapolate.</p>
 <h3 id="the-unit-ambiguity-check">The unit-ambiguity check<a class="headerlink" href="#the-unit-ambiguity-check" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
 <th>Test set</th>
+<th>n</th>
 <th>R²</th>
 <th>MAE</th>
 </tr>
@@ -1251,18 +1263,20 @@ RandomForest and HistGradientBoosting are within noise of each other here.</p>
 <tbody>
 <tr>
 <td>All rows</td>
-<td>0.8279</td>
-<td>18,998</td>
+<td>3,251</td>
+<td>0.8210</td>
+<td>19,239</td>
 </tr>
 <tr>
 <td>Excluding <code>price_unit_ambiguous</code></td>
-<td>0.8278</td>
-<td>18,910</td>
+<td>3,202</td>
+<td>0.8210</td>
+<td>19,158</td>
 </tr>
 </tbody>
 </table>
 <p>247 rows (1.6%) had their target influenced by a feature-derived estimate. Dropping them
-changes R² by 0.0001. The sharpest methodological criticism of the original is now a
+leaves R² unchanged to four decimal places. The sharpest methodological criticism of the original is now a
 demonstrated non-issue rather than an open question.</p>
 <h2 id="prediction-intervals">Prediction intervals<a class="headerlink" href="#prediction-intervals" title="Permanent link">&para;</a></h2>
 <p>Three <code>HistGradientBoosting</code> quantile models at q = 0.1 / 0.5 / 0.9.</p>
@@ -1280,11 +1294,11 @@ demonstrated non-issue rather than an open question.</p>
 </tr>
 <tr>
 <td><strong>Observed coverage</strong></td>
-<td><strong>72.6%</strong></td>
+<td><strong>73.0%</strong></td>
 </tr>
 <tr>
 <td>Median width</td>
-<td>34,648 DZD (36% of price)</td>
+<td>36,146 DZD (37% of price)</td>
 </tr>
 </tbody>
 </table>

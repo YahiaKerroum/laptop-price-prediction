@@ -29,9 +29,9 @@ Then open <http://localhost:8501> for the app, or <http://localhost:8000/docs> f
 
 | Split | R² | MAE (DZD) | Median APE |
 |---|---|---|---|
-| Stratified random *(comparable to the original report)* | **0.848** | **18,028** | 10.6% |
-| Grouped by spec signature | 0.810 | 18,021 | 10.5% |
-| **Time-based — train ≤ 2024, test 2025 (headline)** | **0.810** | **21,319** | **12.2%** |
+| Stratified random *(comparable to the original report)* | **0.846** | **18,126** | 10.4% |
+| Grouped by spec signature | 0.810 | 17,999 | 10.5% |
+| **Time-based — train ≤ 2024, test 2025 (headline)** | **0.817** | **21,051** | **12.1%** |
 
 Against the original course model (R² 0.827, MAE 21,070 on a random split), **MAE fell 14%**
 — from restoring three columns the original pipeline deleted, not from a fancier model.
@@ -148,7 +148,7 @@ curl -X POST localhost:8000/predict -H 'Content-Type: application/json' \
 {
   "estimate_dzd": 109100.0,
   "range_dzd": [105200.0, 147900.0],
-  "model_version": "v20260911T0203"
+  "model_version": "v20260911T1237"
 }
 ```
 

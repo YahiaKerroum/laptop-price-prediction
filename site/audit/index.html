@@ -984,7 +984,7 @@ original used. The loop is bounded — the original's <code>while</code> had no 
 </tr>
 </tbody>
 </table>
-<p>Excluding the flagged rows from the test set moves R² from 0.8279 to 0.8278. The criticism
+<p>Excluding the flagged rows from the test set leaves R² at 0.8210 either way. The criticism
 is now a demonstrated non-issue rather than an open question.</p>
 <p><code>estimated_component_cost</code> is retained as a <em>feature</em> and as an evaluation baseline, where it
 is entirely legitimate.</p>
@@ -1061,13 +1061,13 @@ re-encoding of two features the model already had, with 76% of rows in one bucke
 </table>
 <p><strong>Resolution.</strong> All three restored, plus derived temporal features. <code>model_family</code> retained
 only as a comparison column.</p>
-<p><strong>Measured effect:</strong> MAE fell from 21,070 to 18,028 on the comparable split — <strong>−14%</strong>,
+<p><strong>Measured effect:</strong> MAE fell from 21,070 to 18,126 on the comparable split — <strong>−14%</strong>,
 better than the −11% the original review predicted.</p>
 <hr />
 <h3 id="a4-43-duplicate-configurations-checked-not-a-problem">A4 · 43% duplicate configurations — 🟢 checked, not a problem<a class="headerlink" href="#a4-43-duplicate-configurations-checked-not-a-problem" title="Permanent link">&para;</a></h3>
 <p>16,255 rows carry only <strong>6,944 unique spec signatures</strong>.</p>
 <p><strong>Resolution.</strong> A <code>grouped_split</code> on spec signature is now reported alongside the random
-split. R² 0.810 grouped vs 0.848 random — the duplicates were <em>not</em> inflating the score much.
+split. R² 0.810 grouped vs 0.846 random — the duplicates were <em>not</em> inflating the score much.
 Worth being able to say having actually checked.</p>
 <p>Two things do follow: effective sample size is closer to 6,944 than 16,255, and there is a
 hard noise ceiling. Identical configurations sell up to <strong>9× apart</strong>; predicting the perfect
@@ -1126,7 +1126,7 @@ test (fit → save → load → predict) is part of the suite. The old pickles a
 </tr>
 <tr>
 <td>No MAPE anywhere</td>
-<td><strong>Fixed.</strong> MAPE and median APE are first-class; median APE is 12.2%</td>
+<td><strong>Fixed.</strong> MAPE and median APE are first-class; median APE is 12.1%</td>
 </tr>
 <tr>
 <td><code>n_init=1</code> in the k search vs <code>n_init=20</code> for the final fit</td>
@@ -1248,20 +1248,20 @@ model anywhere in the repo; the closest thing was DBSCAN labelling 130 points as
 <tr>
 <td>R²</td>
 <td>0.827</td>
-<td>0.848</td>
-<td>0.810</td>
+<td>0.846</td>
+<td>0.817</td>
 </tr>
 <tr>
 <td>MAE</td>
 <td>21,070</td>
-<td><strong>18,028</strong></td>
-<td>21,319</td>
+<td><strong>18,126</strong></td>
+<td>21,051</td>
 </tr>
 <tr>
 <td>Median APE</td>
 <td>not reported</td>
-<td>10.6%</td>
-<td><strong>12.2%</strong></td>
+<td>10.4%</td>
+<td><strong>12.1%</strong></td>
 </tr>
 </tbody>
 </table>

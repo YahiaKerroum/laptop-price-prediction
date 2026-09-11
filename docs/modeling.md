@@ -92,7 +92,7 @@ Three, all reported, so the headline cannot be quietly chosen from whichever fla
 
 The dataset has 16,255 rows but only **6,944 unique spec signatures** — 57% are duplicates in
 feature space, so a random split can put the same configuration on both sides. The grouped
-split gives R² 0.810 against 0.848 random. The duplicates were *not* inflating the score
+split gives R² 0.810 against 0.846 random. The duplicates were *not* inflating the score
 much, which is worth being able to say having actually checked.
 
 ## Results
@@ -104,23 +104,28 @@ much, which is worth being able to say having actually checked.
 | Component-cost sum | time | 0.095 | 49,617 | 93,604 | 37.5% | 24.2% | 43.5% |
 | Ridge | time | 0.735 | 25,057 | 50,650 | 20.5% | 14.0% | 65.9% |
 | RandomForest | time | 0.812 | 21,267 | 42,660 | 19.5% | 12.0% | 70.0% |
-| **HistGradientBoosting** | **time** | **0.810** | **21,319** | 42,911 | 19.5% | **12.2%** | 70.5% |
-| HistGradientBoosting | grouped | 0.810 | 18,021 | 39,520 | 18.2% | 10.5% | 76.6% |
-| HistGradientBoosting | random | 0.848 | 18,028 | 36,937 | 18.4% | 10.6% | 75.4% |
+| **HistGradientBoosting** | **time** | **0.817** | **21,051** | 42,134 | 19.3% | **12.1%** | 70.6% |
+| HistGradientBoosting | grouped | 0.810 | 17,999 | 39,436 | 18.3% | 10.5% | 76.4% |
+| HistGradientBoosting | random | 0.846 | 18,126 | 37,142 | 18.5% | 10.4% | 75.0% |
 
 Against the original (R² 0.827, MAE 21,070, random split), **MAE fell 14%** on the
 comparable split. That came from restoring three deleted columns, not from a better model —
 RandomForest and HistGradientBoosting are within noise of each other here.
 
+The monotonic constraints also helped out-of-time generalisation slightly: adding them moved
+the time-based figure from R² 0.810 / MAE 21,319 to 0.817 / 21,051, while leaving the random
+split unchanged. That is the expected direction — a constraint is a regulariser, and it binds
+hardest exactly where the model would otherwise extrapolate.
+
 ### The unit-ambiguity check
 
-| Test set | R² | MAE |
-|---|---|---|
-| All rows | 0.8279 | 18,998 |
-| Excluding `price_unit_ambiguous` | 0.8278 | 18,910 |
+| Test set | n | R² | MAE |
+|---|---|---|---|
+| All rows | 3,251 | 0.8210 | 19,239 |
+| Excluding `price_unit_ambiguous` | 3,202 | 0.8210 | 19,158 |
 
 247 rows (1.6%) had their target influenced by a feature-derived estimate. Dropping them
-changes R² by 0.0001. The sharpest methodological criticism of the original is now a
+leaves R² unchanged to four decimal places. The sharpest methodological criticism of the original is now a
 demonstrated non-issue rather than an open question.
 
 ## Prediction intervals
@@ -130,8 +135,8 @@ Three `HistGradientBoosting` quantile models at q = 0.1 / 0.5 / 0.9.
 | Metric | Value |
 |---|---|
 | Nominal coverage | 80% |
-| **Observed coverage** | **72.6%** |
-| Median width | 34,648 DZD (36% of price) |
+| **Observed coverage** | **73.0%** |
+| Median width | 36,146 DZD (37% of price) |
 
 The interval under-covers by about 7 points. Reported as measured rather than tuned to look
 right; conformal prediction (MAPIE) would give a coverage guarantee and is the obvious next

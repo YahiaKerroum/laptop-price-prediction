@@ -1,4 +1,4 @@
-# Model card - laptop price estimator `v20260911T0203`
+# Model card - laptop price estimator `v20260911T1237`
 
 ## What it does
 Estimates the **asking price**, in Algerian dinars, of a used laptop listed on
@@ -32,9 +32,9 @@ claims precision the data does not contain.
 
 | Split | R² | MAE (DZD) | Median APE |
 |---|---|---|---|
-| Stratified random (comparable to the original report) | 0.8279 | 18,998 | 10.8% |
-| **Time-based (train <= 2024, test 2025) - the honest headline** | 0.8097 | 21,319 | 12.2% |
-| Stratified, excluding unit-ambiguous rows | 0.8278 | 18,910 | 10.8% |
+| Stratified random (comparable to the original report) | 0.8210 | 19,239 | 10.9% |
+| **Time-based (train <= 2024, test 2025) - the honest headline** | 0.8165 | 21,051 | 12.1% |
+| Stratified, excluding unit-ambiguous rows | 0.8210 | 19,158 | 10.9% |
 
 The time-based number is lower than the random-split number. That is expected and
 is the point: listings span 2018-2025 and carry seven years of dinar inflation and
@@ -51,7 +51,7 @@ periods it has already seen.
 
 
 ### Prediction interval
-10th-90th percentile coverage: **72.6%**, median width 34,648 DZD (36% of price).
+10th-90th percentile coverage: **73.0%**, median width 36,146 DZD (37% of price).
 
 ## Known limitations
 - **Noise ceiling.** Identical spec rows sell 2-9x apart; predicting the perfect
@@ -70,7 +70,7 @@ periods it has already seen.
 git checkout unknown
 make build && make pipeline && make train
 ```
-Trained 2026-09-11T02:03:18+00:00 with scikit-learn 1.5.2
+Trained 2026-09-11T12:37:23+00:00 with scikit-learn 1.5.2
 on Python 3.11.16.
 
 ## Notes

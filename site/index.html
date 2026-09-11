@@ -943,21 +943,21 @@ make<span class="w"> </span>serve<span class="w">       </span><span class="c1">
 <tbody>
 <tr>
 <td>Stratified random <em>(comparable to the original report)</em></td>
-<td><strong>0.848</strong></td>
-<td><strong>18,028</strong></td>
-<td>10.6%</td>
+<td><strong>0.846</strong></td>
+<td><strong>18,126</strong></td>
+<td>10.4%</td>
 </tr>
 <tr>
 <td>Grouped by spec signature</td>
 <td>0.810</td>
-<td>18,021</td>
+<td>17,999</td>
 <td>10.5%</td>
 </tr>
 <tr>
 <td><strong>Time-based — train ≤ 2024, test 2025 (headline)</strong></td>
-<td><strong>0.810</strong></td>
-<td><strong>21,319</strong></td>
-<td><strong>12.2%</strong></td>
+<td><strong>0.817</strong></td>
+<td><strong>21,051</strong></td>
+<td><strong>12.1%</strong></td>
 </tr>
 </tbody>
 </table>
@@ -1025,7 +1025,7 @@ src/laptop_price/
 models/        versioned bundles; `latest` points at the current one
 reports/       the three PDFs, the presentation, mined rules, executed notebooks
 docs/          architecture, data dictionary, modelling, deployment, audit, roadmap
-tests/         135 tests over the parsers, splits, metrics and the artifact round-trip
+tests/         158 tests over the parsers, splits, metrics and the artifact round-trip
 </code></pre></div>
 <hr />
 <h2 id="pipeline">Pipeline<a class="headerlink" href="#pipeline" title="Permanent link">&para;</a></h2>
@@ -1096,7 +1096,7 @@ sharpest methodological criticism of the original into a demonstrated non-issue.
 <h2 id="using-it">Using it<a class="headerlink" href="#using-it" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>make<span class="w"> </span>predict<span class="w"> </span><span class="nv">ARGS</span><span class="o">=</span><span class="s2">"--ram 16 --ssd 512 --cpu-mark 19776 --gpu-mark 16758 --brand THINKPAD"</span>
 make<span class="w"> </span>deals<span class="w">                 </span><span class="c1"># today's candidate bargains</span>
-make<span class="w"> </span><span class="nb">test</span><span class="w">                  </span><span class="c1"># 135 tests</span>
+make<span class="w"> </span><span class="nb">test</span><span class="w">                  </span><span class="c1"># 158 tests</span>
 make<span class="w"> </span>verify<span class="w">                </span><span class="c1"># prove the repo matches the original project folder</span>
 make<span class="w"> </span>notebooks<span class="w">             </span><span class="c1"># execute all 9 notebooks top-to-bottom</span>
 </code></pre></div>
@@ -1106,7 +1106,7 @@ make<span class="w"> </span>notebooks<span class="w">             </span><span c
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"estimate_dzd"</span><span class="p">:</span><span class="w"> </span><span class="mf">109100.0</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"range_dzd"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">105200.0</span><span class="p">,</span><span class="w"> </span><span class="mf">147900.0</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">"model_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"v20260911T0203"</span>
+<span class="w">  </span><span class="nt">"model_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"v20260911T1237"</span>
 <span class="p">}</span>
 </code></pre></div>
 <hr />
