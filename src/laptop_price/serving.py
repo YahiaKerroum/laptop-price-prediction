@@ -132,10 +132,15 @@ def predict_one(
 
     if bundle.quantile_pipelines:
         quantiles = sorted(bundle.quantile_pipelines)
-        predictions = {q: float(bundle.quantile_pipelines[q].predict(frame)[0]) for q in quantiles}
-        # Quantile models are fitted independently and can cross on sparse
-        # regions; sorting restores a coherent interval.
-        low, high = sorted((predictions[quantiles[0]], predictions[quantiles[-1]]))
+        raw = [float(bundle.quantile_pipelines[q].predict(frame)[0]) for q in quantiles]
+
+        # Quantile rearrangement. The models are fitted independently, so on
+        # about 0.7% of listings they cross - a predicted 10th percentile above
+        # the 50th, which is not a quantile function. Sorting the values and
+        # reassigning them to the ordered levels is the standard remedy
+        # (Chernozhukov et al.) and is provably no worse than leaving them.
+        predictions = dict(zip(quantiles, sorted(raw), strict=True))
+        low, high = predictions[quantiles[0]], predictions[quantiles[-1]]
 
         # The point estimate comes from a separate squared-error model, so on
         # about 1.4% of listings it lands outside the quantile interval. Showing

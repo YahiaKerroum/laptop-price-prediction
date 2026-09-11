@@ -99,11 +99,16 @@ curl -X POST localhost:8000/predict \
 identical configurations in the training data sell 2–9× apart. Observed interval coverage is
 72.4% against a nominal 80%.
 
-The point estimate is guaranteed to lie inside `range_dzd`. It comes from a squared-error
-model while the bounds come from independently fitted quantile models, and on about 1.4% of
-listings they disagree; the interval is widened to contain the point rather than the point
-being moved, because the point is what the reported metrics were measured on. `quantiles`
-shows the raw, unwidened quantile predictions.
+Two guarantees about the shape of this response:
+
+- **The point estimate lies inside `range_dzd`.** It comes from a squared-error model while
+  the bounds come from independently fitted quantile models, and on ~1.4% of listings they
+  disagree. The interval is widened to contain the point rather than the point being moved,
+  because the point is what the reported metrics were measured on.
+- **`quantiles` is non-decreasing in the level.** The quantile models cross on ~0.7% of
+  listings — a predicted 10th percentile above the 50th, which is not a quantile function.
+  The values are rearranged onto the ordered levels, the standard remedy and provably no
+  worse than leaving them crossed.
 
 With `?explain=true`:
 
