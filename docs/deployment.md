@@ -124,6 +124,47 @@ runs. Nothing currently monitors this; Evidently is the roadmap item.
 
 **Logs.** Plain stdout, captured by `make logs`.
 
+## Troubleshooting
+
+### `make build` fails with "network is unreachable"
+
+```
+ERROR [internal] load metadata for docker.io/library/python:3.11-slim
+dial tcp [2600:1f18:...]:443: connect: network is unreachable
+```
+
+Docker resolved `docker.io` to an **IPv6** address on a host with no working IPv6
+route. It is a host networking problem, not a problem with this project — IPv4 to the same
+registry works.
+
+**If the image already exists, you do not need to fix it.** `make build` skips when
+`laptop-price:dev` is present, and `make serve` / `make lab` / `make up` no longer force a
+rebuild, so the whole project runs offline against images you already have. Only `make
+rebuild` and a first-time build need the registry.
+
+To fix it properly, make the host prefer IPv4 (needs root):
+
+```bash
+# option 1 - system-wide preference, survives until /etc/gai.conf changes
+echo 'precedence ::ffff:0:0/96  100' | sudo tee -a /etc/gai.conf
+
+# option 2 - disable IPv6 for this session, then restart Docker
+sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
+sudo systemctl restart docker
+```
+
+Then `make rebuild`.
+
+### `make serve` says an image is missing
+
+Compose builds any image it does not already have, so this only happens on a first run with
+no network. Run `make build` first, or `make rebuild` once connectivity is back.
+
+### The API returns 503
+
+No trained model. Run `make train`, then `curl -X POST localhost:8000/reload` (or restart
+the container).
+
 ## Known operational limits
 
 - **No authentication or rate limiting.** Fine behind a gateway, not on the open internet.

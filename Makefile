@@ -16,15 +16,22 @@ DOCKER_RUN := docker run --rm \
 	$(IMAGE)
 
 .DEFAULT_GOAL := help
-.PHONY: help build pipeline train predict deals test lint format notebooks docs \
+.PHONY: help build rebuild pipeline train predict deals test lint format notebooks docs \
         lab serve up down logs clean verify all
 
 help:  ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
-build:  ## Build the Docker image (do this first)
-	docker build -f docker/Dockerfile --target dev -t $(IMAGE) .
+build:  ## Build the Docker image (do this first; skipped if it already exists)
+	@if docker image inspect $(IMAGE) >/dev/null 2>&1; then \
+		echo "$(IMAGE) already exists - skipping. Use 'make rebuild' to force."; \
+	else \
+		docker build -f docker/Dockerfile --target dev -t $(IMAGE) .; \
+	fi
+
+rebuild:  ## Force a rebuild of the Docker image
+	docker build --pull -f docker/Dockerfile --target dev -t $(IMAGE) .
 
 pipeline:  ## Rebuild data/processed/model_ready_data.csv from the preprocessed listings
 	$(DOCKER_RUN) python -m laptop_price pipeline --data-card
@@ -59,13 +66,13 @@ docs:  ## Build the documentation site into site/
 	docker run --rm -v "$(CURDIR):/app" -w /app $(IMAGE) mkdocs build --strict
 
 lab:  ## JupyterLab at http://localhost:8888
-	$(COMPOSE) --profile lab up --build
+	$(COMPOSE) --profile lab up
 
 serve:  ## API at :8000 and UI at :8501
-	$(COMPOSE) --profile serve up --build
+	$(COMPOSE) --profile serve up
 
 up:  ## Start everything
-	$(COMPOSE) --profile all up --build -d
+	$(COMPOSE) --profile all up -d
 	@echo "lab  http://localhost:8888"
 	@echo "api  http://localhost:8000/docs"
 	@echo "app  http://localhost:8501"
