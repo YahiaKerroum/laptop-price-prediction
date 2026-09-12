@@ -28,6 +28,11 @@ exist in this market, and how does each one price?* - with:
 ``naming``     readable segment labels generated from centroid statistics
 """
 
+from laptop_price.clustering.consensus import (
+    ConsensusResult,
+    consensus_segments,
+    run_to_run_agreement,
+)
 from laptop_price.clustering.distances import gower_matrix, gower_vector
 from laptop_price.clustering.metrics import (
     cluster_metrics,
@@ -43,15 +48,18 @@ from laptop_price.clustering.segment import (
 )
 
 __all__ = [
+    "ConsensusResult",
     "Embedding",
     "SegmentationResult",
     "cluster_metrics",
     "compare_clusterings",
+    "consensus_segments",
     "describe_segments",
     "embed",
     "gower_matrix",
     "gower_vector",
     "name_segment",
     "segment_market",
+    "run_to_run_agreement",
     "stability_score",
 ]

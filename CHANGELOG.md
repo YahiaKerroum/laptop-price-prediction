@@ -35,7 +35,7 @@ plus the accuracy repairs and the missing deliverable identified in the audit.
 - **Streamlit app** — spec form → price range with explanation, deal feed, market charts.
 - **Docker** — multi-stage image (`dev`/`lab`/`api`/`app`) and a compose stack with profiles.
 - **Makefile** — `build`, `pipeline`, `train`, `test`, `verify`, `notebooks`, `serve`, `docs`.
-- **206 tests** over the parsers, splits, metrics, and the artifact round-trip.
+- **211 tests** over the parsers, splits, metrics, and the artifact round-trip.
 - **pandera contracts** asserted at stage boundaries.
 - **Config file** (`config.yaml`) replacing magic numbers scattered across notebook cells.
 - **Documentation**: architecture, pipeline, data dictionary, modelling, model card, API,
@@ -136,6 +136,22 @@ Each of these was surfaced by the new pandera contracts or the generated data ca
   pricing.
 - Gower distance implemented and tested for mixed-type work; it refuses oversized inputs
   rather than allocating a 2.1 GB matrix.
+- **Found that the base pipeline is not reproducible, and fixed it.** UMAP 0.5.7 stops being
+  seed-reproducible between 4,500 and 8,000 rows: two identical runs on the full dataset
+  score **ARI 0.25** against each other. `n_jobs=1`, `NUMBA_NUM_THREADS=1` and a precomputed
+  exact k-NN graph all failed to fix it. `clustering.consensus` builds the co-association
+  matrix from a 4,000-row subsample — below the threshold, where each run *is* deterministic —
+  averages over eight seeds, and assigns the rest by nearest centroid in feature space.
+  Two independent calls now give **ARI 1.000**.
+- Consensus segments cut the price spread from the market-wide 2.42x to **1.62x** within a
+  segment, so they carry real pricing information.
+- **Reported the negative result too**: fitting a model per segment did *not* improve
+  prediction (specialists won 2 of 6 large segments, mean −1.35 pp of median APE). The global
+  model already sees every feature the segments were built from. Segmentation here describes
+  the market; it does not improve the price model.
+- An earlier version of `docs/modeling.md` claimed silhouette rises as clusters merge. That
+  was measured on the PCA fallback and **reverses under UMAP**; the claim is retracted and
+  replaced with the reproducibility analysis that makes such single-run trends unsafe to read.
 
 ### Known limitations
 

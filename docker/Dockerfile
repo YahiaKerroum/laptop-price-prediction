@@ -61,7 +61,18 @@ RUN useradd --create-home --uid 1000 appuser \
 FROM base AS dev
 
 COPY requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements-dev.txt
+# requirements-dev.txt begins with "-r requirements.txt", which would re-resolve
+# xgboost *with* its dependency closure and pull the 342 MB CUDA package the
+# base stage went out of its way to avoid. The base stage already installed all
+# of requirements.txt, so drop that line and pass the file as a constraint
+# instead: constraints pin versions without requesting installs, so a dev tool
+# still cannot drag numpy or scipy off their pins.
+# The sed strips extras ("uvicorn[standard]==..." -> "uvicorn==..."): pip
+# rejects a constraints file containing them.
+RUN grep -v '^-r requirements.txt' requirements-dev.txt > /tmp/requirements-dev-only.txt \
+    && sed 's/\[[^]]*\]//' requirements.txt > /tmp/constraints.txt \
+    && pip install --no-cache-dir -r /tmp/requirements-dev-only.txt -c /tmp/constraints.txt \
+    && rm /tmp/requirements-dev-only.txt /tmp/constraints.txt
 USER appuser
 
 # ----------------------------------------------------------------------------

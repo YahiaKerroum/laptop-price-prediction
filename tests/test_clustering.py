@@ -196,3 +196,57 @@ class TestSegmentNaming:
         labels = np.array([-1] * 5 + [0] * 5)
         report = describe_segments(frame, labels)
         assert "noise" in report.set_index("segment").loc[-1, "name"]
+
+
+class TestConsensus:
+    """Consensus clustering, and the instability that motivates it.
+
+    The base pipeline stops being seed-reproducible somewhere between 4,500 and
+    8,000 rows (measured: identical at 4,500, ARI 0.43 at 8,000, 0.25 on the full
+    dataset). Every number from a single run above that threshold would describe
+    the run rather than the market.
+    """
+
+    def test_co_association_counts_shared_membership(self):
+        from laptop_price.clustering.consensus import co_association_matrix
+
+        runs = [
+            np.array([0, 0, 1, 1]),
+            np.array([0, 0, 1, 1]),
+            np.array([0, 1, 1, 1]),
+        ]
+        matrix = co_association_matrix(runs)
+
+        assert matrix[0, 1] == pytest.approx(2 / 3)  # together twice of three
+        assert matrix[2, 3] == pytest.approx(1.0)  # always together
+        assert matrix[0, 3] == pytest.approx(0.0)  # never together
+        np.testing.assert_allclose(np.diag(matrix), 1.0)
+
+    def test_noise_agrees_with_nothing(self):
+        """HDBSCAN declined to place these; that is not evidence of similarity."""
+        from laptop_price.clustering.consensus import co_association_matrix
+
+        matrix = co_association_matrix([np.array([-1, -1, 0, 0])])
+        assert matrix[0, 1] == pytest.approx(0.0)
+        assert matrix[2, 3] == pytest.approx(1.0)
+
+    def test_run_agreement_detects_identical_runs(self):
+        from laptop_price.clustering.consensus import run_to_run_agreement
+
+        labels = np.array([0, 0, 1, 1, 2, 2])
+        assert run_to_run_agreement([labels, labels.copy()])["mean_ari"] == pytest.approx(1.0)
+
+    def test_run_agreement_detects_unrelated_runs(self):
+        from laptop_price.clustering.consensus import run_to_run_agreement
+
+        rng = np.random.default_rng(0)
+        runs = [rng.integers(0, 5, size=200) for _ in range(3)]
+        assert run_to_run_agreement(runs)["mean_ari"] < 0.2
+
+    def test_consensus_sample_stays_below_the_reproducibility_threshold(self):
+        """4,000 is not an arbitrary memory bound - above ~4,500 the base
+        clusterer stops being seed-reproducible, so the ensemble would be built
+        from noise rather than from repeatable parts."""
+        from laptop_price.clustering.consensus import CONSENSUS_SAMPLE
+
+        assert CONSENSUS_SAMPLE <= 4_500

@@ -244,44 +244,95 @@ Three specific causes, all fixed:
 | Raw price (1,800 to 3,550,000) fed in alongside `SSD_SIZE`, so distance lived in one dimension | Price is excluded from the feature set; it *supervises* the embedding instead. Segmenting on price and then reporting that segments differ in price is circular |
 | The train-fitted scaler had `fit_transform` called on it again over the full dataset | Fitted once |
 
-### Silhouette is not a selection criterion
+### The base pipeline is not reproducible, and that is the main finding
 
-Sweeping `min_cluster_size` shows the trap directly:
+Before any segment can be reported, one question has to be answered: does the same data give
+the same answer twice? On the full dataset it does not.
 
-| min_cluster_size | k | Silhouette | Largest share | Noise |
-|---|---|---|---|---|
-| 162 (1%) | 16 | 0.561 | **30.6%** | 23.6% |
-| 400 | 6 | 0.567 | 62.6% | 7.4% |
-| 800 | 4 | **0.634** | 63.3% | 8.4% |
+| Rows | Two runs, same seed |
+|---|---|
+| 2,000 | identical (ARI 1.000) |
+| 4,000 | identical (ARI 1.000) |
+| 4,500 | identical (ARI 1.000) |
+| 8,000 | **ARI 0.431** |
+| 16,255 (all) | **ARI 0.253** |
 
-**The silhouette improves as clusters merge and one grows past 60% of the market.** Picking
-the best silhouette reproduces the original's mistake in a milder form. The balanced setting
-scores lower and is the one that segments anything, which is why every clustering is reported
-with its size distribution and bootstrap stability beside the score.
+UMAP 0.5.7 stops being seed-reproducible somewhere between 4,500 and 8,000 rows — most
+likely where it switches from exact to approximate nearest neighbours, whose parallel graph
+construction is not seed-controlled. Setting `n_jobs=1`, forcing `NUMBA_NUM_THREADS=1`, and
+supplying a precomputed exact k-NN graph all failed to fix it.
 
-### Bootstrap stability
+An ARI of 0.25 means two runs of the same code on the same data produce nearly unrelated
+segmentations. **Any silhouette, cluster count, or segment name from a single such run
+describes the run, not the market.** Reporting one would have repeated the original project's
+mistake in a new form — and the first version of this section did exactly that, quoting a
+`min_cluster_size` sweep whose trend reversed once real UMAP replaced the PCA fallback it had
+been measured on.
 
-Each clustering is refit on 20 subsamples at 80%, and each subsample's labels are compared
-with the full fit's labels for those rows by adjusted Rand index. This is the diagnostic that
-would have caught the original immediately: peeling outliers off a blob is not stable,
-because which points count as extreme moves with the sample.
+### Consensus clustering (roadmap §5)
+
+`laptop_price.clustering.consensus` fixes this in two parts:
+
+1. **Build below the threshold.** The co-association matrix is assembled from a stratified
+   4,000-row subsample, small enough that each individual run *is* deterministic. The
+   ensemble is built from repeatable parts rather than from noise.
+2. **Average over seeds anyway.** Eight runs with different seeds; count how often each pair
+   of listings shares a cluster; cluster that with average linkage. Remaining listings are
+   assigned to the nearest consensus centroid **in feature space** — never through the
+   embedding, which is the unreproducible part.
+
+The result is reproducible end to end: two independent calls give **ARI 1.000**.
+
+| | Value |
+|---|---|
+| Base run-to-run agreement (at 4,000 rows) | mean ARI 0.887, min 0.804 |
+| Consensus segments | 19 |
+| Consensus strength | 0.76 |
+| Largest segment | 39.9% |
+
+**Consensus strength** is the average co-association among pairs the consensus places
+together: 0.76 means the runs agreed on roughly three-quarters of within-segment pairs. It is
+a far more honest summary than a silhouette, because it is measured against the question that
+actually matters — would you get these segments again?
+
+### Do the segments concentrate price?
+
+This is the test that decides whether a segmentation means anything.
+
+| | P75/P25 price spread |
+|---|---|
+| Market-wide | 2.42× |
+| **Median within segment** | **1.62×** |
+| Tightest segment | 1.13× |
+
+Segments cut the price spread by roughly a third, so they do carry pricing information. The
+market splits into a large mainstream mass (74,000–98,000 DZD), a discrete-GPU tier around
+118,000, and a premium gaming/workstation tier at 250,000–280,000.
+
+### But they do not improve the model — and that is fine
+
+`price_model_by_segment` fits a model inside each segment and compares it with one global
+model on the same rows. Specialist models won in **2 of 6** large segments; the mean change
+was **−1.35 percentage points** of median APE.
+
+That is a negative result and it is reported as one. The explanation is straightforward: the
+global model already sees every feature the segments were built from, so partitioning the
+data only costs it training rows. **Segmentation here is a tool for describing the market,
+not for improving the price model.** Claiming otherwise would be the kind of unearned result
+this project exists to remove.
 
 ### Segments are named
 
-A cluster id means nothing. Each segment gets a label derived from its median specs against
-the market - "premium gaming / workstation", "lower-mid budget bureautique" - together with
-its size, median price, and the price spread *within* it. A segment whose members price alike
-is a real segment; one spanning several multiples is a bag of leftovers.
+A cluster id means nothing. Each gets a label derived from its median specs against the
+market — "premium gaming / workstation", "lower-mid mainstream productivity" — with its size,
+median price, and internal price spread.
 
-The loop closes with `price_model_by_segment`: a model fitted inside each segment, compared
-against one global model on the same rows. Segmentation that measurably improves pricing
-means something; segmentation that does not is decoration.
+### Still not done
 
-### Not done
-
-Consensus clustering across algorithms and seeds (roadmap §5) is not implemented. Gower
-distance is implemented and tested but is not used for the main segmentation - a full
+Gower distance is implemented and tested but is not used for the main segmentation: a full
 pairwise matrix over 16,255 listings is 2.1 GB, so it is for subsampled diagnostics.
+Consensus currently ensembles over seeds of one algorithm; ensembling across *different*
+algorithms would be stronger.
 
 ## Anomaly detection
 
