@@ -15,8 +15,10 @@ import pandas as pd
 from laptop_price.features.build import TARGET
 
 #: Thresholds separating performance tiers, in PassMark points.
+GPU_FLAGSHIP = 16_000  # RTX 3080+ tier; differentiates flagship from mainstream gaming
 GPU_GAMING = 8_000
 GPU_DISCRETE = 2_000
+CPU_FLAGSHIP = 24_000  # top-tier mobile CPUs; separates workstation from gaming segments
 CPU_STRONG = 18_000
 CPU_WEAK = 6_000
 
@@ -37,7 +39,14 @@ def name_segment(profile: pd.Series, market: pd.Series) -> str:
     market_price = market.get(TARGET, 1) or 1
 
     # --- what kind of machine ---
-    if gpu >= GPU_GAMING and cpu >= CPU_STRONG:
+    # Three sub-tiers within high-end gaming prevent segments with identical GPU and CPU
+    # ranges from receiving the same name (the original bug: segments 0, 2, 3 all called
+    # "premium gaming / workstation").
+    if gpu >= GPU_FLAGSHIP:
+        parts.append("flagship gaming")
+    elif gpu >= GPU_GAMING and cpu >= CPU_FLAGSHIP:
+        parts.append("CPU-intensive workstation")
+    elif gpu >= GPU_GAMING and cpu >= CPU_STRONG:
         parts.append("gaming / workstation")
     elif gpu >= GPU_DISCRETE:
         parts.append("entry discrete-GPU")
