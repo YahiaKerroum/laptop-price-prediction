@@ -39,6 +39,12 @@ MAX_PLAUSIBLE_RAM_GB = 128.0
 #: with no separator.
 MAX_PLAUSIBLE_STORAGE_GB = 16_384.0
 
+#: Approximate first month of Ramadan by year (shifts ~11 days each year).
+#: Used to flag listings posted during the Algerian Ramadan shopping surge.
+RAMADAN_MONTHS: dict[int, int] = {
+    2018: 5, 2019: 5, 2020: 4, 2021: 4, 2022: 4, 2023: 3, 2024: 3, 2025: 3,
+}
+
 #: Ordinal condition scale. Missing deliberately maps to NaN, not to 0.
 ETAT_ORDINAL: dict[str, float] = {
     "MOYEN": 1.0,
@@ -86,6 +92,10 @@ NUMERIC_FEATURES: tuple[str, ...] = (
     "has_hdd",
     "is_dual_drive",
     "has_dedicated_gpu",
+    "is_gaming",
+    "is_ultrabook",
+    "is_back_to_school",
+    "is_ramadan",
     "model_family",
 )
 
@@ -268,6 +278,22 @@ def build_feature_matrix(df: pd.DataFrame, *, drop_missing_target: bool = True) 
     out["is_dual_drive"] = ((out["HDD_SIZE"] > 0) & (out["SSD_SIZE"] > 0)).astype(int)
     out["has_dedicated_gpu"] = out["DEDICATED_GPU"].notna().astype(int)
 
+    # --- use-case flags (Phase 3) -----------------------------------------
+    out["is_gaming"] = (
+        (out["has_dedicated_gpu"] == 1) & (out["gpu_tdp"].fillna(0) > 45)
+    ).astype(int)
+
+    out["is_ultrabook"] = (
+        (out["SCREEN_SIZE_SNAPPED"].fillna(99) <= 14)
+        & (out["tdp"].fillna(99) <= 15)
+        & (out["has_dedicated_gpu"] == 0)
+    ).astype(int)
+
+    out["is_back_to_school"] = out["listing_month"].isin([9, 10]).astype(int)
+
+    _ramadan = out["listing_year"].map(RAMADAN_MONTHS)
+    out["is_ramadan"] = (_ramadan == out["listing_month"]).astype(int)
+
     # --- ratios (roadmap 3b) ----------------------------------------------
     out["gpu_to_cpu_ratio"] = out["gpu_g3d_mark"] / out["cpu_mark"].replace(0, np.nan)
     out["storage_per_ram"] = out["SSD_SIZE"] / out["RAM_SIZE"].replace(0, np.nan)
@@ -325,11 +351,12 @@ def _model_family_tier(df: pd.DataFrame) -> pd.Series:
 
 __all__ = [
     "CATEGORICAL_FEATURES",
+    "ETAT_ORDINAL",
     "MAX_PLAUSIBLE_RAM_GB",
     "MAX_PLAUSIBLE_STORAGE_GB",
     "MIN_PLAUSIBLE_RAM_GB",
-    "ETAT_ORDINAL",
     "NUMERIC_FEATURES",
+    "RAMADAN_MONTHS",
     "SIGNATURE_COLUMNS",
     "TARGET",
     "build_feature_matrix",

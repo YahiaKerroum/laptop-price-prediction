@@ -128,6 +128,24 @@ class TestFeatureMatrix:
         assert matrix["listing_year"].between(2018, 2030).all()
         assert matrix["month_sin"].between(-1, 1).all()
 
+    def test_use_case_flags_are_binary(self, listings):
+        """is_gaming, is_ultrabook, is_back_to_school, is_ramadan must be 0 or 1."""
+        matrix = build_feature_matrix(listings)
+        for col in ("is_gaming", "is_ultrabook", "is_back_to_school", "is_ramadan"):
+            assert set(matrix[col].unique()).issubset({0, 1}), f"{col} has non-binary values"
+
+    def test_gaming_flag_requires_discrete_gpu_and_high_tdp(self, listings):
+        """is_gaming = 1 only when has_dedicated_gpu=1 AND gpu_tdp > 45."""
+        matrix = build_feature_matrix(listings)
+        gaming = matrix[matrix["is_gaming"] == 1]
+        assert (gaming["has_dedicated_gpu"] == 1).all()
+        assert (gaming["gpu_tdp"] > 45).all()
+
+    def test_ultrabook_flag_excludes_discrete_gpu(self, listings):
+        """is_ultrabook must never co-occur with has_dedicated_gpu=1."""
+        matrix = build_feature_matrix(listings)
+        assert (matrix.loc[matrix["is_ultrabook"] == 1, "has_dedicated_gpu"] == 0).all()
+
     def test_spec_signature_groups_identical_configurations(self):
         frame = pd.DataFrame({"RAM_SIZE": [8.0, 8.0, 16.0], "SSD_SIZE": [256.0, 256.0, 512.0]})
         signature = spec_signature(frame, ("RAM_SIZE", "SSD_SIZE"))
