@@ -131,11 +131,57 @@ class DealResponse(BaseModel):
     cpu_mark: float | None = None
 
 
+class SimilarListing(BaseModel):
+    """One nearest-neighbour result."""
+
+    rank: int
+    asking_price_dzd: float
+    predicted_dzd: float | None = None
+    distance: float
+    brand: str | None = None
+    city: str | None = None
+    ram_gb: float | None = None
+    ssd_gb: float | None = None
+    cpu_mark: float | None = None
+
+
+class MarketStatsResponse(BaseModel):
+    total_listings: int
+    median_price: float
+    mean_price: float
+    price_std: float
+    brands: int
+    price_by_brand: dict[str, float]
+
+
+class AnomalyCheckResponse(BaseModel):
+    anomaly_score: float = Field(..., description="Higher = more anomalous (0–1 scale)")
+    is_anomalous: bool
+    reasons: list[str]
+
+
+class BatchRequest(BaseModel):
+    listings: list[ListingRequest]
+
+
+class BatchPredictionItem(BaseModel):
+    index: int
+    estimate_dzd: float | None = None
+    range_dzd: list[float] | None = None
+    model_version: str
+    error: str | None = None
+
+
 __all__ = [
+    "AnomalyCheckResponse",
+    "BatchPredictionItem",
+    "BatchRequest",
     "Contribution",
     "DealResponse",
     "HealthResponse",
     "ListingRequest",
+    "MarketStatsResponse",
     "PredictionResponse",
     "SchemaResponse",
+    "SimilarListing",
 ]

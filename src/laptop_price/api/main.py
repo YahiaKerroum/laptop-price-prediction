@@ -24,11 +24,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from laptop_price import __version__
 from laptop_price.api.schemas import (
+    AnomalyCheckResponse,
+    BatchPredictionItem,
+    BatchRequest,
     DealResponse,
     HealthResponse,
     ListingRequest,
+    MarketStatsResponse,
     PredictionResponse,
     SchemaResponse,
+    SimilarListing,
 )
 
 logger = logging.getLogger(__name__)
@@ -192,6 +197,161 @@ def _opt_str(value: Any) -> str | None:
     if value is None or value != value:  # NaN
         return None
     return str(value)
+
+
+@app.post("/predict/batch", response_model=list[BatchPredictionItem], tags=["prediction"])
+def predict_batch(batch: BatchRequest) -> list[BatchPredictionItem]:
+    """Score multiple listings in a single request."""
+    _require_bundle()
+    from laptop_price.serving import predict_one
+
+    results = []
+    for i, listing in enumerate(batch.listings):
+        try:
+            payload = listing.to_listing()
+            result = predict_one(payload)
+            results.append(
+                BatchPredictionItem(
+                    index=i,
+                    estimate_dzd=result["estimate_dzd"],
+                    range_dzd=result.get("range_dzd"),
+                    model_version=result["model_version"],
+                )
+            )
+        except Exception as exc:
+            bundle = _STATE.get("bundle")
+            results.append(
+                BatchPredictionItem(
+                    index=i,
+                    model_version=bundle.version if bundle else "unknown",
+                    error=str(exc),
+                )
+            )
+    return results
+
+
+@app.post("/similar", response_model=list[SimilarListing], tags=["prediction"])
+def similar_listings(
+    listing: ListingRequest,
+    k: int = Query(5, ge=1, le=20),
+) -> list[SimilarListing]:
+    """Return the k nearest listings by Euclidean distance in preprocessed space."""
+    bundle = _require_bundle()
+    from laptop_price.data import load_model_ready
+    from laptop_price.features.build import TARGET
+    from laptop_price.models.pipeline import feature_frame
+
+    import numpy as np
+
+    try:
+        matrix = load_model_ready()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=f"feature matrix not built: {exc}") from exc
+
+    payload = listing.to_listing()
+    import pandas as pd
+
+    query_row = pd.DataFrame([payload])
+    numeric_cols = bundle.numeric_features
+    available = [c for c in numeric_cols if c in matrix.columns and c in query_row.columns]
+
+    query_vec = query_row[available].fillna(0).values.astype(float)
+    matrix_num = matrix[available].fillna(0).values.astype(float)
+
+    distances = np.sqrt(((matrix_num - query_vec) ** 2).sum(axis=1))
+    top_k_idx = np.argsort(distances)[:k]
+
+    results = []
+    for rank, idx in enumerate(top_k_idx, start=1):
+        row = matrix.iloc[idx]
+        results.append(
+            SimilarListing(
+                rank=rank,
+                asking_price_dzd=float(row[TARGET]),
+                distance=float(distances[idx]),
+                brand=_opt_str(row.get("brand")),
+                city=_opt_str(row.get("city_grouped")),
+                ram_gb=_opt_float(row.get("RAM_SIZE")),
+                ssd_gb=_opt_float(row.get("SSD_SIZE")),
+                cpu_mark=_opt_float(row.get("cpu_mark")),
+            )
+        )
+    return results
+
+
+@app.get("/market/stats", response_model=MarketStatsResponse, tags=["market"])
+def market_stats() -> MarketStatsResponse:
+    """Aggregated market statistics."""
+    _require_bundle()
+    from laptop_price.data import load_model_ready
+    from laptop_price.features.build import TARGET
+
+    try:
+        matrix = load_model_ready()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=f"feature matrix not built: {exc}") from exc
+
+    return MarketStatsResponse(
+        total_listings=int(len(matrix)),
+        median_price=float(matrix[TARGET].median()),
+        mean_price=float(matrix[TARGET].mean()),
+        price_std=float(matrix[TARGET].std()),
+        brands=int(matrix["brand"].nunique()),
+        price_by_brand={
+            k: float(v)
+            for k, v in matrix.groupby("brand")[TARGET].median().items()
+        },
+    )
+
+
+@app.post("/anomaly/check", response_model=AnomalyCheckResponse, tags=["anomaly"])
+def check_anomaly(listing: ListingRequest) -> AnomalyCheckResponse:
+    """Check if a single listing looks anomalous based on IsolationForest score."""
+    bundle = _require_bundle()
+    from laptop_price.data import load_model_ready
+    from laptop_price.features.build import TARGET, NUMERIC_FEATURES
+
+    import numpy as np
+    import pandas as pd
+
+    try:
+        matrix = load_model_ready()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=f"feature matrix not built: {exc}") from exc
+
+    try:
+        from sklearn.ensemble import IsolationForest
+
+        payload = listing.to_listing()
+        available = [c for c in NUMERIC_FEATURES if c in matrix.columns]
+        X_train = matrix[available].fillna(matrix[available].median())
+
+        iso = IsolationForest(n_estimators=100, contamination=0.05, random_state=42, n_jobs=-1)
+        iso.fit(X_train)
+
+        query_row = pd.DataFrame([payload])
+        query_vec = query_row[available].fillna(X_train.median())
+        score = iso.score_samples(query_vec)[0]
+        # IsolationForest score: more negative = more anomalous
+        # Normalise to 0-1 (higher = more anomalous)
+        normalised = float(np.clip(1.0 - (score - (-0.5)) / 0.5, 0.0, 1.0))
+        is_anomalous = iso.predict(query_vec)[0] == -1
+
+        reasons: list[str] = []
+        if listing.cpu_mark is not None and listing.cpu_mark < 500:
+            reasons.append("cpu_mark unusually low")
+        if listing.ram_gb is not None and listing.ram_gb > 64:
+            reasons.append("RAM_SIZE unusually high")
+        if is_anomalous:
+            reasons.append("IsolationForest flags this combination as rare")
+
+        return AnomalyCheckResponse(
+            anomaly_score=normalised,
+            is_anomalous=is_anomalous,
+            reasons=reasons,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"anomaly check failed: {exc}") from exc
 
 
 @app.post("/reload", tags=["meta"])
