@@ -203,6 +203,69 @@ def build_quantile_pipelines(
     return pipelines
 
 
+def make_catboost_preprocessor(
+    numeric: tuple[str, ...] = NUMERIC_FEATURES,
+    categorical: tuple[str, ...] = CATEGORICAL_FEATURES,
+) -> ColumnTransformer:
+    """Preprocessor for CatBoost: numerics pass through, categoricals get
+    missing-value imputation only (no one-hot encoding, so CatBoost can use
+    its native categorical handling instead of OHE which defeats the purpose).
+    """
+    categorical_steps = Pipeline(
+        [("impute", SimpleImputer(strategy="constant", fill_value="UNKNOWN"))]
+    )
+    return ColumnTransformer(
+        [
+            ("num", "passthrough", list(numeric)),
+            ("cat", categorical_steps, list(categorical)),
+        ],
+        remainder="drop",
+    )
+
+
+def build_catboost_pipeline(
+    *,
+    log_target: bool | None = None,
+) -> Pipeline | TransformedTargetRegressor:
+    """Pipeline using CatBoost's native categorical handling.
+
+    CatBoost accepts raw string categoricals directly, so we bypass the OHE
+    step and only impute missing values in categorical columns. The
+    ``cat_features`` parameter is passed as column *indices* in the
+    transformed output (numerics first, then categoricals).
+    """
+    from catboost import CatBoostRegressor  # optional dep; imported lazily
+
+    log_target = CONFIG.model.log_target if log_target is None else log_target
+
+    # Numeric columns come first in make_catboost_preprocessor output
+    cat_indices = list(range(len(NUMERIC_FEATURES), len(NUMERIC_FEATURES) + len(CATEGORICAL_FEATURES)))
+
+    estimator = CatBoostRegressor(
+        iterations=500,
+        learning_rate=0.06,
+        depth=6,
+        l2_leaf_reg=3.0,
+        random_seed=CONFIG.model.random_state,
+        verbose=0,
+        cat_features=cat_indices,
+    )
+
+    pipeline = Pipeline(
+        [
+            ("preprocess", make_catboost_preprocessor()),
+            ("model", estimator),
+        ]
+    )
+
+    if not log_target:
+        return pipeline
+
+    return TransformedTargetRegressor(
+        regressor=pipeline, func=np.log1p, inverse_func=_expm1_clipped
+    )
+
+
 def feature_frame(df: pd.DataFrame) -> pd.DataFrame:
     """Select exactly the declared feature columns, in the declared order.
 
@@ -218,8 +281,10 @@ def feature_frame(df: pd.DataFrame) -> pd.DataFrame:
 
 __all__ = [
     "build_pipeline",
+    "build_catboost_pipeline",
     "monotonic_constraints",
     "build_quantile_pipelines",
     "feature_frame",
     "make_preprocessor",
+    "make_catboost_preprocessor",
 ]
