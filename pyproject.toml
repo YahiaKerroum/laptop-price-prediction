@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "laptop-price"
+version = "1.0.0"
+description = "Price intelligence for the Algerian used-laptop market (Ouedkniss listings)"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Data Mining Project team" }]
+keywords = ["data-mining", "regression", "clustering", "anomaly-detection", "algeria"]
+
+[project.scripts]
+laptop-pipeline = "laptop_price.cli:pipeline_main"
+laptop-train = "laptop_price.cli:train_main"
+laptop-predict = "laptop_price.cli:predict_main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+laptop_price = ["*.yaml", "*.yml"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["notebooks/legacy"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = ["E501", "B008"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "slow: tests that train a model or read the full dataset",
+    "needs_data: tests that require data/ to be populated",
+]
+
+[tool.coverage.run]
+source = ["src/laptop_price"]
+omit = ["*/app/*", "*/__main__.py"]

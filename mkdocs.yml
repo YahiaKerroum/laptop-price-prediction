@@ -1,0 +1,48 @@
+site_name: Laptop Price Intelligence — Algeria
+site_description: Price intelligence for the Algerian second-hand laptop market
+repo_url: https://github.com/khalilgh1/laptop-price-prediction
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle: { icon: material/weather-night, name: Switch to dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle: { icon: material/weather-sunny, name: Switch to light mode }
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - toc.follow
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc: { permalink: true }
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.details
+
+nav:
+  - Overview: index.md
+  - Using it:
+      - Pipeline: pipeline.md
+      - API reference: api.md
+      - Deployment: deployment.md
+  - Understanding it:
+      - Architecture: architecture.md
+      - Modelling: modeling.md
+      - Model card: model-card.md
+      - Data dictionary: data-dictionary.md
+      - Generated data card: data-card.md
+  - Background:
+      - Audit: audit.md
+      - Roadmap: roadmap.md
+      - Contributing: contributing.md

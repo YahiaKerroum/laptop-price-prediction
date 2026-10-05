@@ -1,2 +1,35 @@
+# NOTE: .gitignore has no support for trailing comments. A line like
+#   site/    # build output
+# is treated as the literal pattern "site/    # build output" and matches
+# nothing. Keep every comment on its own line.
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Jupyter ---
 .ipynb_checkpoints/
 converted_notebooks/
+
+# --- generated ---
+# mkdocs build output
+site/
+# papermill output; regenerate with `make notebooks`
+reports/executed/
+# notebook 04's artifacts; the shipped model is models/<version>/
+models/notebook_run/
+
+# --- the source folder this repo was consolidated from ---
+# Kept locally so `make verify` can prove the consolidation is complete.
+docs_for_claude/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+.venv/

@@ -1,0 +1,383 @@
+# Modelling
+
+## Target
+
+`price_corrected` — the listing's asking price in DZD after troll removal and unit
+correction. Trained on `log1p(price)` and inverted inside the artifact, so callers always
+work in dinars.
+
+Predictions are clamped to the trained band [10,000 – 1,000,000 DZD]. Outside it the model
+has no evidence, and a pricing service quoting 40 million dinars for a laptop is worse than
+one quoting the ceiling. Before this guard a Ridge baseline emitted a single extrapolated
+prediction large enough to overflow `expm1` to infinity, which poisoned every aggregate
+metric computed from it.
+
+## Features
+
+36 columns: 32 numeric and 4 categorical.
+
+### Restored from deletion
+
+The original pipeline dropped `created_at`, `city` and `model_name`, and replaced brand with
+`model_family` — a four-level tier computed from `cpu_mark` and `gpu_g3d_mark`, i.e. a lossy
+re-encoding of two features the model already had, with 76% of rows in one bucket.
+
+| Column | Why it matters |
+|---|---|
+| `city_grouped` | Median price spans 2.35× between Algiers districts; 470 levels collapsed to 59 (min 30 listings) |
+| `brand` | ThinkPad vs IdeaPad at identical specs is a large used-market difference; 46 levels → 39 |
+| `listing_year`, `listing_month`, `listing_month_index`, `month_sin/cos` | Listings span 2018–2025 — seven years of dinar inflation, tech depreciation and the 2021–22 GPU spike |
+
+`model_family` is retained, but only so the results table can show what real brand
+information bought over the proxy.
+
+### Condition
+
+41.4% of `spec_Etat` is missing. The original encoded `MOYEN=1, BON ÉTAT=2, JAMAIS UTILISÉ=3,
+missing=0` — placing the largest group at the bottom of the scale when its mean price sits
+*between* buckets 2 and 3.
+
+Here, missing is `NaN` and `etat_is_missing` is an explicit flag. `HistGradientBoosting`
+learns its own split for missing values, so the information is used rather than fabricated.
+
+The original also contained a 60-line `infer_laptop_state()` that was **never called**. It
+read `price_preview` to infer condition, which would have leaked the target directly. It is
+deleted, not wired in.
+
+### Engineered
+
+| Feature | Definition |
+|---|---|
+| `gpu_to_cpu_ratio` | `gpu_g3d_mark / cpu_mark` — gaming vs productivity build |
+| `storage_per_ram` | `SSD_SIZE / RAM_SIZE` — balanced vs lopsided |
+| `total_storage`, `has_hdd`, `is_dual_drive` | Storage shape |
+| `pixels`, `ppi` | Actual pixel count and density, instead of only an ordinal tier |
+| `total_tdp` | `cpu_tdp + gpu_tdp` — ultrabook through desktop-replacement |
+| `estimated_component_cost` | Rule-based build cost; also an evaluation baseline |
+| `perf_per_expected_dinar` | `cpu_mark / estimated_component_cost` |
+
+Keeping `estimated_component_cost` as a *feature* is legitimate and interesting — it answers
+"does the model beat a component-sum heuristic?" The problem was only ever letting it edit
+the target.
+
+### Encoding
+
+Numeric columns pass through untouched: tree ensembles handle raw magnitudes and NaN
+natively, and not imputing is the point of the condition fix. Categoricals are one-hot
+encoded with `handle_unknown="ignore"` and `min_frequency=20`, so an unseen city at inference
+time cannot raise.
+
+`early_stopping` is set **explicitly to False** rather than left at its `'auto'` default.
+`'auto'` enables early stopping only above 10,000 samples, which meant the 60% comparison fit
+(9,753 rows) trained for the full `max_iter` while the 80% refit that becomes the shipped
+artifact (13,004 rows) early-stopped *and* held back a further 10% internally. The artifact
+was therefore trained differently from the model whose metrics were reported — silently, as a
+function of split size. Fixing it improved the shipped artifact from R² 0.821 / MAE 19,239 to
+0.839 / 18,017. Regularisation comes from `l2_regularization` and `max_leaf_nodes` instead.
+
+Monotonic constraints are **enforced** for `RAM_SIZE`, `SSD_SIZE`, `cpu_mark` and
+`gpu_g3d_mark` — more must never mean cheaper. Beyond correctness this keeps the
+"what would raise the value" panel from producing an embarrassing recommendation.
+
+They are passed to the estimator as a dict keyed by feature name, which requires the
+preprocessor to emit a DataFrame (`set_output(transform="pandas")`) — the width of the
+transformed matrix depends on how many one-hot levels survive `min_frequency` and is not
+known until fit time, so a positional array could not be built in advance. The quantile
+models carry the same constraints: an upper bound that falls when RAM rises is indefensible.
+
+A parametrised test sweeps each constrained feature across its range and asserts the
+prediction never decreases.
+
+## Splits
+
+Three, all reported, so the headline cannot be quietly chosen from whichever flatters most.
+
+| Split | What it answers |
+|---|---|
+| Stratified random 60/20/20 | Comparable to the original report |
+| Grouped on spec signature | Are duplicate configurations inflating the score? |
+| **Time-based: train ≤ 2024, test 2025** | **Can we price a laptop listed tomorrow?** |
+
+The dataset has 16,255 rows but only **6,944 unique spec signatures** — 57% are duplicates in
+feature space, so a random split can put the same configuration on both sides. The grouped
+split gives R² 0.810 against 0.846 random. The duplicates were *not* inflating the score
+much, which is worth being able to say having actually checked.
+
+## Results
+
+| Model | Split | R² | MAE (DZD) | RMSE | MAPE | MedAPE | Within 20% |
+|---|---|---|---|---|---|---|---|
+| Global median | time | −0.107 | 63,033 | 103,493 | 59.4% | 42.1% | 24.0% |
+| Median of identical spec | time | 0.074 | 51,194 | 94,672 | 47.0% | 27.8% | 41.0% |
+| Component-cost sum | time | 0.095 | 49,617 | 93,604 | 37.5% | 24.2% | 43.5% |
+| Ridge | time | 0.735 | 25,057 | 50,650 | 20.5% | 14.0% | 65.9% |
+| RandomForest | time | 0.812 | 21,267 | 42,660 | 19.5% | 12.0% | 70.0% |
+| **HistGradientBoosting** | **time** | **0.817** | **21,051** | 42,134 | 19.3% | **12.1%** | 70.6% |
+| HistGradientBoosting | grouped | 0.810 | 17,999 | 39,436 | 18.3% | 10.5% | 76.4% |
+| HistGradientBoosting | random | 0.846 | 18,126 | 37,142 | 18.5% | 10.4% | 75.0% |
+
+Against the original (R² 0.827, MAE 21,070, random split), **MAE fell 14%** on the
+comparable split. That came from restoring three deleted columns, not from a better model —
+RandomForest and HistGradientBoosting are within noise of each other here.
+
+The monotonic constraints also helped out-of-time generalisation slightly: adding them moved
+the time-based figure from R² 0.810 / MAE 21,319 to 0.817 / 21,051, while leaving the random
+split unchanged. That is the expected direction — a constraint is a regulariser, and it binds
+hardest exactly where the model would otherwise extrapolate.
+
+### The unit-ambiguity check
+
+| Test set | n | R² | MAE |
+|---|---|---|---|
+| All rows | 3,251 | 0.8394 | 18,017 |
+| Excluding `price_unit_ambiguous` | 3,202 | 0.8397 | 17,897 |
+
+247 rows (1.6%) had their target influenced by a feature-derived estimate. Dropping them
+moves R² by 0.0003 — in the *favourable* direction, but by an amount indistinguishable from
+noise on a 3,251-row test set. The sharpest methodological criticism of the original is now a
+demonstrated non-issue rather than an open question.
+
+## Where the model is weak
+
+Aggregate error hides a lot. Every training run now writes per-segment tables into
+`metadata.json` (by price decile, brand, city, listing year and condition) and prints the
+price-decile one.
+
+**Read `MedAPE`, not `R²`, in these tables.** R² is measured against the variance *within*
+each segment, and a price decile has almost none by construction, so it goes sharply negative
+even where predictions are good. That is a property of the statistic, not a finding.
+
+### By price decile
+
+| Decile | n | MedAPE | MAE (DZD) |
+|---|---|---|---|
+| 0 (cheapest) | 326 | **20.4%** | 12,679 |
+| 1–8 | ~325 each | 8.7–11.2% | 7,550–28,929 |
+| 9 (most expensive) | 325 | 9.5% | 53,528 |
+
+The cheapest tenth of the market is **roughly twice as hard as everything else**. That fits:
+a 25,000 DZD laptop is old, its condition dominates its price, and condition is the field
+sellers most often leave blank.
+
+### By listing year
+
+| Year | n | MedAPE |
+|---|---|---|
+| 2021 | 69 | 20.6% |
+| 2023 | 39 | 13.8% |
+| 2024 | 794 | 10.6% |
+| 2025 | 2,167 | 9.9% |
+
+Error rises steadily the further back a listing sits. This is the temporal drift the
+time-based split exists to measure, visible directly.
+
+### By stated condition
+
+| Condition | n | MedAPE |
+|---|---|---|
+| MOYEN (fair) | 64 | 23.0% |
+| BON ÉTAT | 1,027 | 11.0% |
+| JAMAIS UTILISÉ | 784 | 10.6% |
+| **not stated** | 1,376 | **9.4%** |
+
+The listings with **no stated condition are the easiest to price**, not the hardest. That is
+a direct vindication of encoding missing as `NaN` rather than as a low ordinal: those rows
+are not degraded observations, they are a coherent group the model reads well. The original
+scheme put them at the bottom of a quality scale.
+
+`MOYEN` is the hardest and the rarest — 64 listings, and "fair condition" covers everything
+from a scuffed lid to a failing battery.
+
+## Prediction intervals
+
+Three `HistGradientBoosting` quantile models at q = 0.1 / 0.5 / 0.9.
+
+| Metric | Value |
+|---|---|
+| Nominal coverage | 80% |
+| **Observed coverage** | **72.4%** |
+| Median width | 33,959 DZD (36% of price) |
+
+The interval under-covers by about 7 points. Reported as measured rather than tuned to look
+right; conformal prediction (MAPIE) would give a coverage guarantee and is the obvious next
+step.
+
+A range is the correct output shape regardless. Identical configurations sell 2–9× apart, so
+a point estimate claims precision the data does not contain.
+
+## The ceiling
+
+| Quantity | Value |
+|---|---|
+| Rows | 16,255 |
+| Unique spec signatures | 6,944 |
+| Median max/min price ratio for repeated configurations | ~1.5× |
+| Worst observed | ~9× |
+
+Predicting the perfect per-configuration mean would cap out near R² 0.95 in log space. At
+0.81 on the time split there is real headroom, but **most of it is not in the spec columns**.
+It lives in listing text, seller reputation, photo count, negotiability and urgency — none of
+which were scraped. Squeezing another 0.01 out of a better gradient booster is a rounding
+error next to getting listing text into the model.
+
+## Market segmentation
+
+`notebooks/05` and `07` are the original clustering work, kept unchanged.
+`notebooks/10_market_segmentation.ipynb` replaces them, built on
+`src/laptop_price/clustering/`.
+
+### What the original reported, and what it was
+
+`05_clustering.ipynb` reported a **silhouette of 0.9796** at k=4. The cluster sizes give it
+away: **14,161 / 498 / 550**. That is a handful of extreme outliers peeled off one blob.
+
+Re-scoring the same approach honestly - scaler fitted once, silhouette measured in the space
+actually clustered rather than in a PCA projection - gives **0.150** for K-Means at k=4.
+The 0.98 was never a property of the clustering. It was a property of the projection it was
+measured in, plus the degenerate partition that unscaled magnitudes produced.
+
+Three specific causes, all fixed:
+
+| Cause | Fix |
+|---|---|
+| `RobustScaler` on zero-IQR columns (`HDD_SIZE` is 0 at both quartiles - 92% of listings have no HDD), so scaling was a no-op and raw magnitudes dominated | `QuantileTransformer`, which maps every column onto the same bounded scale regardless of how degenerate its spread |
+| Raw price (1,800 to 3,550,000) fed in alongside `SSD_SIZE`, so distance lived in one dimension | Price is excluded from the feature set; it *supervises* the embedding instead. Segmenting on price and then reporting that segments differ in price is circular |
+| The train-fitted scaler had `fit_transform` called on it again over the full dataset | Fitted once |
+
+### The base pipeline is not reproducible, and that is the main finding
+
+Before any segment can be reported, one question has to be answered: does the same data give
+the same answer twice? On the full dataset it does not.
+
+| Rows | Two runs, same seed |
+|---|---|
+| 2,000 | identical (ARI 1.000) |
+| 4,000 | identical (ARI 1.000) |
+| 4,500 | identical (ARI 1.000) |
+| 8,000 | **ARI 0.431** |
+| 16,255 (all) | **ARI 0.253** |
+
+UMAP 0.5.7 stops being seed-reproducible somewhere between 4,500 and 8,000 rows — most
+likely where it switches from exact to approximate nearest neighbours, whose parallel graph
+construction is not seed-controlled. Setting `n_jobs=1`, forcing `NUMBA_NUM_THREADS=1`, and
+supplying a precomputed exact k-NN graph all failed to fix it.
+
+An ARI of 0.25 means two runs of the same code on the same data produce nearly unrelated
+segmentations. **Any silhouette, cluster count, or segment name from a single such run
+describes the run, not the market.** Reporting one would have repeated the original project's
+mistake in a new form — and the first version of this section did exactly that, quoting a
+`min_cluster_size` sweep whose trend reversed once real UMAP replaced the PCA fallback it had
+been measured on.
+
+### Consensus clustering (roadmap §5)
+
+`laptop_price.clustering.consensus` fixes this in two parts:
+
+1. **Build below the threshold.** The co-association matrix is assembled from a stratified
+   4,000-row subsample, small enough that each individual run *is* deterministic. The
+   ensemble is built from repeatable parts rather than from noise.
+2. **Average over seeds anyway.** Eight runs with different seeds; count how often each pair
+   of listings shares a cluster; cluster that with average linkage. Remaining listings are
+   assigned to the nearest consensus centroid **in feature space** — never through the
+   embedding, which is the unreproducible part.
+
+The result is reproducible end to end: two independent calls give **ARI 1.000**.
+
+| | Value |
+|---|---|
+| Base run-to-run agreement (at 4,000 rows) | mean ARI 0.887, min 0.804 |
+| Consensus segments | 19 |
+| Consensus strength | 0.76 |
+| Largest segment | 39.9% |
+
+**Consensus strength** is the average co-association among pairs the consensus places
+together: 0.76 means the runs agreed on roughly three-quarters of within-segment pairs. It is
+a far more honest summary than a silhouette, because it is measured against the question that
+actually matters — would you get these segments again?
+
+### Do the segments concentrate price?
+
+This is the test that decides whether a segmentation means anything.
+
+| | P75/P25 price spread |
+|---|---|
+| Market-wide | 2.42× |
+| **Median within segment** | **1.62×** |
+| Tightest segment | 1.13× |
+
+Segments cut the price spread by roughly a third, so they do carry pricing information. The
+market splits into a large mainstream mass (74,000–98,000 DZD), a discrete-GPU tier around
+118,000, and a premium gaming/workstation tier at 250,000–280,000.
+
+### But they do not improve the model — and that is fine
+
+`price_model_by_segment` fits a model inside each segment and compares it with one global
+model on the same rows. Specialist models won in **2 of 6** large segments; the mean change
+was **−1.35 percentage points** of median APE.
+
+That is a negative result and it is reported as one. The explanation is straightforward: the
+global model already sees every feature the segments were built from, so partitioning the
+data only costs it training rows. **Segmentation here is a tool for describing the market,
+not for improving the price model.** Claiming otherwise would be the kind of unearned result
+this project exists to remove.
+
+### Segments are named
+
+A cluster id means nothing. Each gets a label derived from its median specs against the
+market — "premium gaming / workstation", "lower-mid mainstream productivity" — with its size,
+median price, and internal price spread.
+
+### Still not done
+
+Gower distance is implemented and tested but is not used for the main segmentation: a full
+pairwise matrix over 16,255 listings is 2.1 GB, so it is for subsampled diagnostics.
+Consensus currently ensembles over seeds of one algorithm; ensembling across *different*
+algorithms would be stronger.
+
+## Anomaly detection
+
+| Component | Method |
+|---|---|
+| Scam / bait | IsolationForest, LocalOutlierFactor, ECOD, COPOD on the joint (specs, log-price) distribution, majority vote |
+| Deal finder | `(predicted − actual) / predicted`, with joint outliers filtered out |
+| Spec consistency | High-confidence association rules; a listing violating `{RTX 4060} → {16GB}` is probably mistyped |
+
+Evaluating unsupervised detection without labels is mostly impossible, so two honest things
+are reported: pairwise Jaccard agreement between detectors, and precision@k once ~200
+listings are hand-labelled. `notebooks/09` writes a stratified labelling template to
+`data/labels/` so the effort is spent on rows that matter.
+
+### What the detectors actually agree on
+
+At 2% contamination each detector flags 326 listings. They do **not** flag the same ones:
+
+| | IsolationForest | LOF | ECOD | COPOD |
+|---|---|---|---|---|
+| **IsolationForest** | 1.00 | 0.00 | 0.45 | 0.71 |
+| **LOF** | 0.00 | 1.00 | 0.00 | 0.00 |
+| **ECOD** | 0.45 | 0.00 | 1.00 | 0.49 |
+| **COPOD** | 0.71 | 0.00 | 0.49 | 1.00 |
+
+The three global methods overlap substantially. `LocalOutlierFactor` overlaps with none of
+them — Jaccard 0.00 across the board. That is not a bug: LOF scores *local* density, so it
+finds listings that are odd relative to their immediate neighbourhood rather than odd in the
+distribution as a whole. Majority vote yields 288 listings (1.8%); the union yields 815
+(5.0%).
+
+The deal filter uses the **union**, not the majority. For a feed that tells people where to
+spend money, a false "not a bargain" costs far less than a false "bargain".
+
+**This is why four detectors were benchmarked rather than one.** A single detector would have
+looked perfectly reasonable and quietly covered a quarter of the anomaly space.
+
+Section 6c is the piece that makes the project one argument rather than three assignments:
+the association rules mined for their own deliverable become an input to fraud detection.
+
+## Reproducing
+
+```bash
+make build && make pipeline && make train
+```
+
+`models/<version>/metadata.json` records the git SHA, library versions and full metric panel
+for every run.

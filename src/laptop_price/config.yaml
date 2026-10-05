@@ -1,0 +1,61 @@
+# Every magic number that used to be scattered across notebook cells.
+# Override any of these with a YAML file pointed at by $LAPTOP_PRICE_CONFIG.
+
+price:
+  # Plausible band for a real laptop asking price, in DZD. Used by the
+  # price-only unit rule (see cleaning/price.py) and by outlier trimming.
+  min_dzd: 10_000
+  max_dzd: 1_000_000
+  # Hard bounds for the rescaling search, so the loop can never run away.
+  rescale_max_steps: 8
+  # A listing is "unit-ambiguous" when two or more powers of ten land inside
+  # the plausible band; only those fall back to the component-cost estimate.
+  ambiguous_fallback: true
+  # Trailing-zero tiebreaker: Algerian asking prices are overwhelmingly round.
+  trailing_zero_tiebreak: true
+
+currency:
+  # The parallel ("square") rate, not the official one - it is what actually
+  # prices imported electronics in Algeria.
+  usd_to_dzd: 260.0
+  # Retail markdown applied to component sums to stay competitive with the
+  # second-hand market.
+  market_adjustment: 0.75
+
+features:
+  # Cities with fewer listings than this collapse into a single OTHER level.
+  city_min_count: 30
+  # Brands (model_name) below this collapse into OTHER.
+  brand_min_count: 20
+  target_column: price_corrected
+  # Columns the audit found were dropped for no stated reason (roadmap A3).
+  restored_columns: [created_at, city, model_name]
+
+model:
+  random_state: 42
+  test_size: 0.2
+  val_size: 0.25          # of the remaining 80% -> 60/20/20 overall
+  n_splits: 5
+  log_target: true
+  # The time-based split is the headline number: train on everything up to and
+  # including this year, test on what came after.
+  time_split_train_max_year: 2024
+  quantiles: [0.1, 0.5, 0.9]
+  monotonic_increasing: [RAM_SIZE, SSD_SIZE, cpu_mark, gpu_g3d_mark]
+
+anomaly:
+  contamination: 0.02
+  # A listing is flagged as a candidate bargain when the model's prediction
+  # exceeds the asking price by at least this fraction.
+  deal_threshold: 0.35
+  # ...and as a possible scam when it is that cheap AND the spec/price pair is
+  # itself an outlier.
+  scam_threshold: 0.60
+  top_k: 50
+
+association:
+  min_support: 0.05
+  min_confidence: 0.6
+  min_lift: 1.1
+  # Confidence above which a violated rule counts as a spec inconsistency.
+  inconsistency_confidence: 0.80

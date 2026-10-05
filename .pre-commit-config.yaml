@@ -1,0 +1,34 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^(src|tests|scripts)/
+      - id: ruff-format
+        files: ^(src|tests|scripts)/
+
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        files: ^(src|tests|scripts)/
+
+  # Notebook outputs are noise in diffs and bloat the repo. The executed copies
+  # under reports/executed/ keep the outputs that matter.
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.8.1
+    hooks:
+      - id: nbstripout
+        files: ^notebooks/.*\.ipynb$
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+        exclude: ^(data/|reports/|models/)
+      - id: trailing-whitespace
+        exclude: ^(data/|reports/|models/)
+      - id: check-yaml
+      - id: check-added-large-files
+        args: [--maxkb=6000]

@@ -1,0 +1,66 @@
+# Run everything with:  make up      (or: docker compose -f docker/docker-compose.yml up)
+#
+# All three services share the same data/ and models/ bind mounts, so a model
+# trained in the lab is immediately servable by the api without a rebuild.
+
+name: laptop-price
+
+x-common: &common
+  build:
+    context: ..
+    dockerfile: docker/Dockerfile
+  environment:
+    LAPTOP_PRICE_ROOT: /app
+  restart: unless-stopped
+
+services:
+  lab:
+    <<: *common
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: lab
+    container_name: laptop-price-lab
+    ports:
+      - "8888:8888"
+    volumes:
+      - ../data:/app/data
+      - ../models:/app/models
+      - ../reports:/app/reports
+      - ../notebooks:/app/notebooks
+      - ../src:/app/src
+      - ../tests:/app/tests
+    profiles: ["lab", "all"]
+
+  api:
+    <<: *common
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: api
+    container_name: laptop-price-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../data:/app/data:ro
+      - ../models:/app/models:ro
+    profiles: ["serve", "all"]
+
+  app:
+    <<: *common
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: app
+    container_name: laptop-price-app
+    ports:
+      - "8501:8501"
+    environment:
+      LAPTOP_PRICE_ROOT: /app
+      LAPTOP_PRICE_API_URL: http://api:8000
+    volumes:
+      - ../data:/app/data:ro
+      - ../models:/app/models:ro
+    depends_on:
+      - api
+    profiles: ["serve", "all"]

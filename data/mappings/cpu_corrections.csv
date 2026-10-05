@@ -1,0 +1,127 @@
+normalized_query,canonical_cpu_name
+i5 1135u,i5-1135G7
+i5 1135,i5-1135G7
+i3 1115g7,i3-1115G4
+i3 1124g,i3-1125G4
+i5 1244u,i5-1245U
+i5 1285p,i5-1240P
+i5 1235p,i5-1240P
+i5 12210u,i5-1235U
+i7 13350u,i7-1355U
+i7 13340u,i7-1355U
+i7 1365p,i7-1360P
+i5 1345p,i5-1340P
+i5 8300u,i5-8250U
+i5 8700,i5-8300H
+i5 8265,i5-8265U
+i5 8600,i5-8300H
+i5 8350 vpro,i5-8350U
+i5 8300 vpro,i5-8250U
+i5 8350de,i5-8350U
+i5 8635u,i5-8265U
+i7 8560u,i7-8550U
+i5 7300,i5-7300U
+i5 7300 vpro,i5-7300U
+i5 7400u,i5-7200U
+i5 7400,i5-7300HQ
+i7 7375u,i7-7500U
+i5 6300,i5-6300U
+i7 6600,i7-6600U
+i7 6600hq,i7-6700HQ
+i7 6850hq,i7-6820HQ
+i7 6550u,i7-6500U
+i3 6006,i3-6006U
+i7 4712,i7-4712MQ
+i5 4570m,i5-4200M
+i3 4050u,i3-4030U
+i3 3220,i3-3120M
+i3 3300,i3-3120M
+i5 2415m,i5-2410M
+i7 9900,i7-9750H
+m3 7e,Core m3-7Y30
+n200,Intel N200
+n4500,Intel Celeron N4500
+i5 210h,Intel Core 5 210H
+i5 220h,Intel Core 5 220H
+i5 220u,Intel Core 5 220U
+i7 150u,Intel Core 7 150U
+i7 250h,Intel Core 7 250H
+i7 250u,Intel Core 7 250U
+i5 120u,Intel Core 5 220U
+i5 135u,Intel Core 5 220U
+i7 155h,Intel Core Ultra 7 155H
+i7 155u,Intel Core Ultra 7 155U
+i9 185h,Intel Core Ultra 9 185H
+i9 th8hk,Intel Core i9-8950HK @ 2.90GHz
+i3 330m,i3-330M
+i3 350m,i3-350M
+i3 370m,i3-370M
+i3 380m,i3-380M
+i3 370,i3-370M
+i5 430m,i5-430M
+i5 520m,i5-520M
+i5 540m,i5-540M
+i5 m480,i5-480M
+i5 m520,i5-520M
+i5 m540,i5-540M
+i7 620m,i7-620M
+i7 920xm,i7-920XM
+i5 750s,i5-750S
+i3 3em,i3-3110M
+i5 11em,i5-1135G7
+i3 t4005,i3-4005U
+i3 7y30,Core m3-7Y30
+i5 7y54,i5-7Y54
+i5 7y54u,i5-7Y54
+i7 7y75,i7-7Y75
+i5 l16g7,i5-L16G7
+ryzen 78840u,AMD Ryzen 7 8840U
+ryzen 7730u,AMD Ryzen 7 7730U
+ryzen 8845,AMD Ryzen 7 8845HS
+ryzen 5 220,AMD Ryzen 5 PRO 220
+ryzen 5 740u,AMD Ryzen 5 7540U
+ryzen 7 735hs,AMD Ryzen 7 7735HS
+ryzen 9 hx 370,AMD Ryzen 9 HX 370
+ryzen 7 surface edition,AMD Ryzen 7 4800U
+amd ryzen 5 pro 465u,AMD Ryzen 5 PRO 4650U
+ryzen 5 pro 465u,AMD Ryzen 5 PRO 4650U
+amd ryzen 5 pro 4675u,AMD Ryzen 5 PRO 4650U
+ryzen 5 pro 4675u,AMD Ryzen 5 PRO 4650U
+amd ryzen 5 pro 5670u,AMD Ryzen 5 PRO 5675U
+ryzen 5 pro 5670u,AMD Ryzen 5 PRO 5675U
+amd ryzen 5 pro 6675u,AMD Ryzen 5 PRO 6650U
+ryzen 5 pro 6675u,AMD Ryzen 5 PRO 6650U
+amd ryzen 5 pro 4450u,AMD Ryzen 5 PRO 4500U
+ryzen 5 pro 4450u,AMD Ryzen 5 PRO 4500U
+amd ryzen 5 pro 5500u,AMD Ryzen 5 PRO 5650U
+ryzen 5 pro 5500u,AMD Ryzen 5 PRO 5650U
+amd ryzen 5 pro 5850u,AMD Ryzen 5 PRO 5650U
+ryzen 5 pro 5850u,AMD Ryzen 5 PRO 5650U
+amd ryzen 5 pro 4535u,AMD Ryzen 5 PRO 4500U
+ryzen 5 pro 4535u,AMD Ryzen 5 PRO 4500U
+amd ryzen 5 pro 7530,AMD Ryzen 5 PRO 7530U
+ryzen 5 pro 7530,AMD Ryzen 5 PRO 7530U
+amd ryzen 5 pro 3500,AMD Ryzen 5 PRO 3500U
+ryzen 5 pro 3500,AMD Ryzen 5 PRO 3500U
+amd ryzen 5 pro 4650,AMD Ryzen 5 PRO 4650U
+ryzen 5 pro 4650,AMD Ryzen 5 PRO 4650U
+amd ryzen 5 pro 3700u,AMD Ryzen 5 PRO 3500U
+ryzen 5 pro 3700u,AMD Ryzen 5 PRO 3500U
+amd ryzen 7 pro 675ou,AMD Ryzen 7 PRO 6850U
+ryzen 7 pro 675ou,AMD Ryzen 7 PRO 6850U
+amd ryzen 7 pro 7735,AMD Ryzen 7 Pro 7735U
+ryzen 7 pro 7735,AMD Ryzen 7 Pro 7735U
+amd ryzen 7 pro 8865hs,AMD Ryzen 7 PRO 8845HS
+ryzen 7 pro 8865hs,AMD Ryzen 7 PRO 8845HS
+amd ryzen 7 pro 6650u,AMD Ryzen 7 PRO 6850U
+ryzen 7 pro 6650u,AMD Ryzen 7 PRO 6850U
+amd ryzen 3 pro 2300,AMD Ryzen 3 PRO 2300U
+ryzen 3 pro 2300,AMD Ryzen 3 PRO 2300U
+amd ryzen 3 pro 3300,AMD Ryzen 3 PRO 3300U
+ryzen 3 pro 3300,AMD Ryzen 3 PRO 3300U
+amd ryzen 3 pro 3400g,AMD Ryzen 3 PRO 3300U
+ryzen 3 pro 3400g,AMD Ryzen 3 PRO 3300U
+amd ryzen 3 pro 3500,AMD Ryzen 3 PRO 3300U
+ryzen 3 pro 3500,AMD Ryzen 3 PRO 3300U
+amd ryzen 3 pro s 5450,AMD Ryzen 3 PRO 5450U
+ryzen 3 pro s 5450,AMD Ryzen 3 PRO 5450U
