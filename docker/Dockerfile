@@ -103,3 +103,16 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 CMD ["streamlit", "run", "/app/src/laptop_price/app/main.py", \
      "--server.address=0.0.0.0", "--server.port=8501", \
      "--server.headless=true", "--browser.gatherUsageStats=false"]
+
+# ----------------------------------------------------------------------------
+# Self-contained API for cloud hosts (Render, Railway, Fly): the model and the
+# data it reads are baked in rather than bind-mounted. Last stage, so it is what
+# a plain `docker build` produces. Hosts pass the port to listen on in $PORT.
+FROM base AS deploy
+
+COPY --chown=appuser:appuser models/ ./models/
+COPY --chown=appuser:appuser data/processed/features.csv data/processed/pre_processed_data.csv ./data/processed/
+COPY --chown=appuser:appuser data/raw/cpu_prices.csv data/raw/gpu_prices.csv ./data/raw/
+USER appuser
+EXPOSE 8000
+CMD uvicorn laptop_price.api.main:app --host 0.0.0.0 --port ${PORT:-8000}
