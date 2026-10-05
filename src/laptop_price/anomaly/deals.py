@@ -21,7 +21,6 @@ import pandas as pd
 from laptop_price.config import CONFIG
 from laptop_price.features.build import TARGET
 from laptop_price.models.registry import ArtifactBundle
-from laptop_price.models.train import FEATURE_COLUMNS
 
 
 def residual_scores(matrix: pd.DataFrame, bundle: ArtifactBundle) -> pd.DataFrame:
@@ -30,7 +29,9 @@ def residual_scores(matrix: pd.DataFrame, bundle: ArtifactBundle) -> pd.DataFram
     ``discount_pct`` is ``(predicted - actual) / predicted * 100``: how far below
     the model's estimate the seller is asking.
     """
-    features = matrix[FEATURE_COLUMNS]
+    # The columns this bundle was fitted on, not the current feature list: a
+    # bundle trained before a feature was added must still be scoreable.
+    features = matrix[[*bundle.numeric_features, *bundle.categorical_features]]
     predicted = np.asarray(bundle.pipeline.predict(features), dtype=float)
     actual = pd.to_numeric(matrix[TARGET], errors="coerce").to_numpy(dtype=float)
 
@@ -139,6 +140,8 @@ def rank_deals(
             "gpu_g3d_mark",
             "spec_Etat",
             "listing_year",
+            "cpu_name",  # optional: present when the caller joined part names on
+            "gpu_name",
             TARGET,
         )
         if c in matrix.columns

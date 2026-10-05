@@ -1,11 +1,76 @@
-# Laptop Price Intelligence — Algeria
+<p align="center">
+  <img src="assets/logo.svg" alt="Qima logo" width="112">
+</p>
+
+<h1 align="center">Qima · Laptop Price Intelligence</h1>
+
+<p align="center">
+  <b>What's your laptop worth?</b><br>
+  Fair asking prices for used laptops in Algeria, learned from 16,000 real listings.
+</p>
+
+<p align="center">
+  <img src="assets/title.png" alt="Qima: the estimator and the home page" width="100%">
+</p>
 
 Price intelligence for the Algerian second-hand laptop market, built from ~16,000 scraped
-Ouedkniss listings. Estimates what a laptop would be listed for, explains the estimate, and
-surfaces listings priced well below what comparable machines fetch.
+Ouedkniss listings. Qima (قيمة, "value") estimates what a laptop would be listed for as a
+tight, calibrated range, explains what moved the estimate, and surfaces listings priced well
+below what comparable machines fetch.
 
 > **It predicts asking price, not sale price.** Every row of training data is an *asking*
 > price. The gap between what a seller asks and what they accept is real and unmeasured here.
+
+---
+
+## What's new
+
+### A range you can act on
+
+The estimate used to be the model's raw 10th–90th percentile band. On held-out listings it
+covered only 69% of real prices while being up to **127% of the price wide**. A ThinkPad
+could come back as "59,000–110,000 DZD".
+
+The headline range is now a **calibrated 50% band**: half of comparable ads fall inside it.
+It is centred on the point estimate and scaled by the model's own uncertainty, with the
+scale fitted on the held-out test fold and checked on a separate half.
+
+| Request | Median error | Band coverage (held out) | Typical width | Widest |
+|---|---|---|---|---|
+| Processor named (`cpu_name`) | **10.6%** | 49.9% | ±12% | ±14% |
+| Benchmark score only | 27% | 50% | ±30% | ±30% |
+
+Naming the processor is what tightens the range. The training pipeline prices a build from
+its CPU and GPU (`estimated_component_cost`), so the API now accepts `cpu_name` / `gpu_name`
+and derives the benchmarks, family, generation, integrated GPU and build cost from them
+([`catalog.py`](src/laptop_price/catalog.py)). The same ThinkPad now comes back as
+**67,600–89,200 DZD**. The raw band is still returned as `wide_range_dzd`.
+
+### A new web app
+
+[`web/`](web/) is a Next.js front end with an Apple-inspired design and its own identity.
+The logo is a laptop that opens like a scallop shell, holding a pearl with a processor in
+it: the processor is the part that moves a laptop's price most.
+
+- **Estimate.** Prices live as you edit, with a searchable list of the 643 processors and
+  102 graphics cards seen in the listings, the factors that moved the price, and real ads
+  like yours.
+- **Deals.** Listings priced far below comparable machines, with likely scams filtered out.
+- **Market.** Charts led by findings from the data, such as condition moving the price more
+  than the model line.
+
+---
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Home](assets/screenshots/00-home.png) | ![Estimate](assets/screenshots/01-estimate.png) |
+| **Home.** The lid opens on scroll to reveal a live price range. | **Estimate.** Pick the processor and the range tightens as you type. |
+| ![Gaming estimate](assets/screenshots/02-estimate-gaming.png) | ![Deals](assets/screenshots/03-deals.png) |
+| **A gaming laptop.** Core i7-13620H + RTX 4060: 195,800–236,100 DZD. | **Deals.** Real ads asking far below comparable laptops. |
+| ![Market overview](assets/screenshots/04-market-overview.png) | ![Condition](assets/screenshots/05-market-condition.png) |
+| **Market.** Who sells what, and for how much. | **Condition.** A never-used ThinkPad asks 3.1× a worn one. |
 
 ---
 
@@ -19,9 +84,20 @@ make train       # build features, train, and write models/<version>/
 make serve       # API on :8000, UI on :8501
 ```
 
-Then open <http://localhost:8501> for the app, or <http://localhost:8000/docs> for the API.
+Then open <http://localhost:8501> for the Streamlit app, or <http://localhost:8000/docs> for
+the API. `make help` lists every target.
 
-`make help` lists every target.
+### The web app
+
+```bash
+make serve                        # the API on :8000 (or: uvicorn laptop_price.api.main:app --port 8000)
+cd web && npm install && npm run dev
+```
+
+Open <http://localhost:3000>. The site calls the API through a `/api` proxy; set `API_URL`
+if it is not on `http://127.0.0.1:8000`. Market charts, deals and the parts catalog are
+static JSON in `web/public/data/`; refresh them after retraining with
+`python scripts/export_web_data.py`.
 
 ---
 
@@ -78,10 +154,15 @@ src/laptop_price/
   anomaly/     scam detection, deal ranking, spec-consistency checks
   evaluation/  metrics, baselines, the three split strategies
   api/  app/   FastAPI service and Streamlit UI
+  catalog.py   CPU/GPU lookups: name a part, get its benchmarks and build cost
+  serving.py   one definition of a request, the calibrated range, SHAP explanations
+web/           Next.js front end (Qima)
+scripts/       export_web_data.py writes the web app's static JSON
+assets/        logo, title image and screenshots used in this README
 models/        versioned bundles; `latest` points at the current one
 reports/       the three PDFs, the presentation, mined rules, executed notebooks
 docs/          architecture, data dictionary, modelling, deployment, audit, roadmap
-tests/         211 tests over the parsers, splits, metrics and the artifact round-trip
+tests/         236 tests over the parsers, splits, metrics, ranges and the artifact round-trip
 ```
 
 ---
@@ -134,23 +215,29 @@ sharpest methodological criticism of the original into a demonstrated non-issue.
 ```bash
 make predict ARGS="--ram 16 --ssd 512 --cpu-mark 19776 --gpu-mark 16758 --brand THINKPAD"
 make deals                 # today's candidate bargains
-make test                  # 211 tests
+make test                  # 236 tests
 make verify                # prove the repo matches the original project folder
 make notebooks             # execute all 9 notebooks top-to-bottom
 ```
 
 ```bash
 curl -X POST localhost:8000/predict -H 'Content-Type: application/json' \
-  -d '{"ram_gb":16,"ssd_gb":512,"cpu_mark":19776,"brand":"THINKPAD","city":"ALGER CENTRE"}'
+  -d '{"cpu_name":"Intel Core i5-1135G7 @ 2.40GHz","ram_gb":8,"ssd_gb":512,
+       "brand":"THINKPAD","condition":2,"listing_year":2025}'
 ```
 
 ```json
 {
-  "estimate_dzd": 109100.0,
-  "range_dzd": [105200.0, 147900.0],
-  "model_version": "v20260911T1337"
+  "estimate_dzd": 77700.0,
+  "range_dzd": [67600.0, 89200.0],
+  "range_coverage": 0.5,
+  "precision": "high",
+  "wide_range_dzd": [58700.0, 109500.0],
+  "model_version": "v20260912T2037"
 }
 ```
+
+`GET /catalog` lists the processor and graphics names `/predict` understands.
 
 ---
 

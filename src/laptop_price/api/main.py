@@ -27,6 +27,7 @@ from laptop_price.api.schemas import (
     AnomalyCheckResponse,
     BatchPredictionItem,
     BatchRequest,
+    CatalogResponse,
     DealResponse,
     HealthResponse,
     ListingRequest,
@@ -117,6 +118,30 @@ def feature_schema() -> SchemaResponse:
         git_sha=meta.get("git_sha"),
         metrics=meta.get("metrics", {}).get("headline_time_based"),
     )
+
+
+@app.get("/catalog", response_model=CatalogResponse, tags=["meta"])
+def parts_catalog() -> CatalogResponse:
+    """CPUs, GPUs, brands and cities as they appear in the training listings.
+
+    Send a ``cpu_name`` from here with /predict: it is the input that most
+    narrows the estimate.
+    """
+    _require_bundle()
+    from laptop_price.catalog import catalog
+    from laptop_price.data import load_model_ready
+
+    try:
+        matrix = load_model_ready()
+        parts = catalog()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=f"data not built: {exc}") from exc
+
+    def levels(column: str) -> list[str]:
+        counts = matrix[column].dropna().astype(str).value_counts()
+        return [v for v in counts.index if v not in ("UNKNOWN", "OTHER")]
+
+    return CatalogResponse(**parts, brands=levels("brand"), cities=levels("city_grouped"))
 
 
 @app.post("/predict", response_model=PredictionResponse, tags=["prediction"])
@@ -215,6 +240,7 @@ def predict_batch(batch: BatchRequest) -> list[BatchPredictionItem]:
                     index=i,
                     estimate_dzd=result["estimate_dzd"],
                     range_dzd=result.get("range_dzd"),
+                    wide_range_dzd=result.get("wide_range_dzd"),
                     model_version=result["model_version"],
                 )
             )
@@ -235,48 +261,34 @@ def similar_listings(
     listing: ListingRequest,
     k: int = Query(5, ge=1, le=20),
 ) -> list[SimilarListing]:
-    """Return the k nearest listings by Euclidean distance in preprocessed space."""
-    bundle = _require_bundle()
+    """The k real listings closest in specification, each axis scaled by its spread."""
+    _require_bundle()
     from laptop_price.data import load_model_ready
     from laptop_price.features.build import TARGET
-    from laptop_price.models.pipeline import feature_frame
-
-    import numpy as np
+    from laptop_price.serving import find_similar
 
     try:
         matrix = load_model_ready()
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=f"feature matrix not built: {exc}") from exc
 
-    payload = listing.to_listing()
-    import pandas as pd
-
-    query_row = pd.DataFrame([payload])
-    numeric_cols = bundle.numeric_features
-    available = [c for c in numeric_cols if c in matrix.columns and c in query_row.columns]
-
-    query_vec = query_row[available].fillna(0).values.astype(float)
-    matrix_num = matrix[available].fillna(0).values.astype(float)
-
-    distances = np.sqrt(((matrix_num - query_vec) ** 2).sum(axis=1))
-    top_k_idx = np.argsort(distances)[:k]
-
-    results = []
-    for rank, idx in enumerate(top_k_idx, start=1):
-        row = matrix.iloc[idx]
-        results.append(
-            SimilarListing(
-                rank=rank,
-                asking_price_dzd=float(row[TARGET]),
-                distance=float(distances[idx]),
-                brand=_opt_str(row.get("brand")),
-                city=_opt_str(row.get("city_grouped")),
-                ram_gb=_opt_float(row.get("RAM_SIZE")),
-                ssd_gb=_opt_float(row.get("SSD_SIZE")),
-                cpu_mark=_opt_float(row.get("cpu_mark")),
-            )
+    nearest = find_similar(listing.to_listing(), matrix, k=k)
+    return [
+        SimilarListing(
+            rank=rank,
+            asking_price_dzd=float(row[TARGET]),
+            distance=float(row["distance"]),
+            brand=_opt_str(row.get("brand")),
+            city=_opt_str(row.get("city_grouped")),
+            ram_gb=_opt_float(row.get("RAM_SIZE")),
+            ssd_gb=_opt_float(row.get("SSD_SIZE")),
+            cpu_mark=_opt_float(row.get("cpu_mark")),
+            gpu_g3d_mark=_opt_float(row.get("gpu_g3d_mark")),
+            cpu_family=_opt_str(row.get("cpu_family")),
+            listing_year=_opt_float(row.get("listing_year")),
         )
-    return results
+        for rank, (_, row) in enumerate(nearest.iterrows(), start=1)
+    ]
 
 
 @app.get("/market/stats", response_model=MarketStatsResponse, tags=["market"])

@@ -36,6 +36,29 @@ INPUT_ALIASES: dict[str, str] = {
 }
 
 
+#: The headline range is a calibrated ~50% band around the point estimate,
+#: ``point * exp(+/- K * spread)``, where ``spread`` is half the log-width of the
+#: model's own 10-90 quantile band (so uncertain machines get wider ranges).
+#:
+#: K was fitted on the held-out stratified test fold of v20260912T2037 (3,251
+#: listings), sending each one through ``to_feature_frame`` as the UI would:
+#:
+#: * CPU identified (``cpu_name``, plus ``gpu_name`` if dedicated): median error
+#:   10.6%. Fitted on one half, K covered 49.9% of the other half; median band
+#:   width 24% of the price, never wider than 28% (about +/-14%).
+#: * CPU not identified (benchmark scores only): median error 27%, so an honest
+#:   50% band is about +/-30%. The UI should ask for the processor by name.
+#:
+#: For comparison the raw 10-90 band covered only 69% on the same requests while
+#: being up to 127% of the price wide. Refit both K whenever the model is retrained.
+LIKELY_RANGE_K = 0.554
+LIKELY_RANGE_K_CPU_UNKNOWN = 1.21
+#: Cap on ``spread``: costs under a point of coverage and bounds the widest band.
+LIKELY_RANGE_MAX_SPREAD = 0.25
+#: Floor, so a model that is overconfident on one row cannot collapse the band.
+LIKELY_RANGE_MIN_SPREAD = 0.05
+
+
 @lru_cache(maxsize=4)
 def get_bundle(version: str | None = None) -> ArtifactBundle:
     """Load and cache a model bundle. One disk read per process per version."""
@@ -60,7 +83,12 @@ def to_feature_frame(listing: dict[str, Any]) -> pd.DataFrame:
     computed here so that a hand-built request produces the same representation
     as a row that came through the training pipeline.
     """
-    values = normalise_input(listing)
+    from laptop_price.catalog import enrich
+
+    enriched = enrich({INPUT_ALIASES.get(key, key): value for key, value in listing.items()})
+    integrated_gpu = bool(enriched.pop("_integrated_gpu", False))
+    cpu_known = bool(enriched.pop("_cpu_known", False))
+    values = normalise_input(enriched)
     row: dict[str, Any] = {column: np.nan for column in NUMERIC_FEATURES}
     row |= {column: "UNKNOWN" for column in CATEGORICAL_FEATURES}
     row |= values
@@ -82,8 +110,23 @@ def to_feature_frame(listing: dict[str, Any]) -> pd.DataFrame:
     row["total_storage"] = ssd + hdd
     row["has_hdd"] = int(hdd > 0)
     row["is_dual_drive"] = int(hdd > 0 and ssd > 0)
-    row["has_dedicated_gpu"] = int(not np.isnan(gpu) and gpu > 0)
+    row["has_dedicated_gpu"] = int(not integrated_gpu and not np.isnan(gpu) and gpu > 0)
     row["gpu_to_cpu_ratio"] = gpu / cpu if cpu else np.nan
+
+    cost = _f("estimated_component_cost")
+    if np.isnan(_f("perf_per_expected_dinar")) and cost > 0:
+        row["perf_per_expected_dinar"] = cpu / cost
+    if np.isnan(_f("model_family")):
+        # Same four-level tier as features.build._model_family_tier.
+        g = 0.0 if np.isnan(gpu) else gpu
+        tier = 0
+        if cpu < 10_000 and g < 4_000:
+            tier = 1
+        if 10_000 <= cpu <= 25_000 and 4_000 <= g <= 18_000:
+            tier = 2
+        if cpu >= 25_000 or g >= 18_000:
+            tier = 3
+        row["model_family"] = tier
     row["storage_per_ram"] = ssd / ram if ram else np.nan
     row["total_tdp"] = (0 if np.isnan(_f("tdp")) else _f("tdp")) + (
         0 if np.isnan(_f("gpu_tdp")) else _f("gpu_tdp")
@@ -101,8 +144,9 @@ def to_feature_frame(listing: dict[str, Any]) -> pd.DataFrame:
     if not np.isnan(year):
         row["listing_month_index"] = (year - 2018) * 12 + month
 
-    frame = pd.DataFrame([row])
-    return frame[[*NUMERIC_FEATURES, *CATEGORICAL_FEATURES]]
+    frame = pd.DataFrame([row])[[*NUMERIC_FEATURES, *CATEGORICAL_FEATURES]]
+    frame.attrs["cpu_known"] = cpu_known
+    return frame
 
 
 def predict_one(
@@ -125,8 +169,8 @@ def predict_one(
         "model_version": bundle.version,
         "currency": "DZD",
         "caveat": (
-            "Asking price, not sale price. Prices for a given configuration vary "
-            "widely; treat the range as the real answer."
+            "Asking price, not sale price. About half of comparable listings ask a "
+            "price inside the range; the rest sit outside it, in both directions."
         ),
     }
 
@@ -149,9 +193,25 @@ def predict_one(
         # the interval is the softer claim, and the point estimate is what the
         # reported metrics were actually measured on.
         low, high = min(low, point), max(high, point)
-
-        result["range_dzd"] = [round(low, -2), round(high, -2)]
+        result["wide_range_dzd"] = [round(low, -2), round(high, -2)]
         result["quantiles"] = {str(q): round(v, -2) for q, v in predictions.items()}
+
+        # The headline range: half of comparable listings ask a price inside it.
+        # Centred on the point estimate in log space, so it always contains it.
+        q_low, q_high = predictions[quantiles[0]], predictions[quantiles[-1]]
+        if q_low > 0 and q_high > q_low:
+            spread = (np.log(q_high) - np.log(q_low)) / 2
+        else:
+            spread = LIKELY_RANGE_MIN_SPREAD
+        spread = float(np.clip(spread, LIKELY_RANGE_MIN_SPREAD, LIKELY_RANGE_MAX_SPREAD))
+        cpu_known = frame.attrs.get("cpu_known", False)
+        half = (LIKELY_RANGE_K if cpu_known else LIKELY_RANGE_K_CPU_UNKNOWN) * spread
+        result["range_dzd"] = [
+            round(point * float(np.exp(-half)), -2),
+            round(point * float(np.exp(half)), -2),
+        ]
+        result["range_coverage"] = 0.5
+        result["precision"] = "high" if cpu_known else "low"
 
     return result
 

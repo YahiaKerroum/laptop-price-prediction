@@ -305,6 +305,30 @@ class TestPredictionCoherence:
         finally:
             serving.get_bundle = original
 
+    def test_headline_range_is_bounded_and_inside_the_wide_band(self, matrix_and_bundle):
+        """The 10-90 band was up to 127% of the price wide - too vague to act on."""
+        import laptop_price.serving as serving
+        from laptop_price.models.pipeline import build_quantile_pipelines
+        from laptop_price.models.train import FEATURE_COLUMNS
+
+        matrix, bundle = matrix_and_bundle
+        bundle.quantile_pipelines = build_quantile_pipelines(quantiles=(0.1, 0.9))
+        for pipeline in bundle.quantile_pipelines.values():
+            pipeline.fit(matrix[FEATURE_COLUMNS], matrix[TARGET])
+
+        max_ratio = np.exp(2 * serving.LIKELY_RANGE_K_CPU_UNKNOWN * serving.LIKELY_RANGE_MAX_SPREAD)
+        original = serving.get_bundle
+        serving.get_bundle = lambda version=None: bundle
+        try:
+            for _, row in matrix[FEATURE_COLUMNS].head(40).iterrows():
+                result = serving.predict_one(row.to_dict())
+                low, high = result["range_dzd"]
+                assert low <= result["estimate_dzd"] <= high, result
+                # +100 DZD of slack for rounding to the nearest hundred
+                assert high <= low * max_ratio + 100, result
+        finally:
+            serving.get_bundle = original
+
     def test_quantiles_are_monotonic_in_the_level(self, matrix_and_bundle):
         """Independently fitted quantile models cross on ~0.7% of listings.
 

@@ -15,6 +15,17 @@ class ListingRequest(BaseModel):
     not know is strictly better than guessing it.
     """
 
+    cpu_name: str | None = Field(
+        None,
+        max_length=120,
+        description=(
+            "Processor, as listed by /catalog. Fills benchmarks, family and build "
+            "cost, and roughly halves the width of the range"
+        ),
+    )
+    gpu_name: str | None = Field(
+        None, max_length=120, description="Dedicated GPU, as listed by /catalog; omit if integrated"
+    )
     ram_gb: float | None = Field(None, ge=1, le=128, description="Installed RAM in GB")
     ssd_gb: float | None = Field(None, ge=0, le=16384, description="SSD capacity in GB")
     hdd_gb: float | None = Field(None, ge=0, le=16384, description="HDD capacity in GB")
@@ -39,6 +50,8 @@ class ListingRequest(BaseModel):
     def to_listing(self) -> dict[str, Any]:
         """Map onto the column names the serving layer expects."""
         return {
+            "cpu_name": self.cpu_name,
+            "gpu_name": self.gpu_name,
             "RAM_SIZE": self.ram_gb,
             "SSD_SIZE": self.ssd_gb,
             "HDD_SIZE": self.hdd_gb,
@@ -87,7 +100,20 @@ class PredictionResponse(BaseModel):
 
     estimate_dzd: float = Field(..., description="Point estimate, DZD")
     range_dzd: list[float] | None = Field(
-        None, description="10th-90th percentile range - read this, not the point estimate"
+        None,
+        description=(
+            "Likely range: a calibrated band that about half of comparable listings "
+            "fall inside. Read this, not the point estimate"
+        ),
+    )
+    range_coverage: float | None = Field(
+        None, description="Share of held-out listings that fell inside range_dzd"
+    )
+    wide_range_dzd: list[float] | None = Field(
+        None, description="Raw 10th-90th percentile band; wider and less precise"
+    )
+    precision: str | None = Field(
+        None, description="'high' when the CPU was identified, 'low' when it was not"
     )
     quantiles: dict[str, float] | None = None
     model_version: str
@@ -143,6 +169,9 @@ class SimilarListing(BaseModel):
     ram_gb: float | None = None
     ssd_gb: float | None = None
     cpu_mark: float | None = None
+    gpu_g3d_mark: float | None = None
+    cpu_family: str | None = None
+    listing_year: float | None = None
 
 
 class MarketStatsResponse(BaseModel):
@@ -160,6 +189,15 @@ class AnomalyCheckResponse(BaseModel):
     reasons: list[str]
 
 
+class CatalogResponse(BaseModel):
+    """Values a front end can offer in its pickers, most common first."""
+
+    cpus: list[dict[str, Any]]
+    gpus: list[dict[str, Any]]
+    brands: list[str]
+    cities: list[str]
+
+
 class BatchRequest(BaseModel):
     listings: list[ListingRequest]
 
@@ -168,6 +206,7 @@ class BatchPredictionItem(BaseModel):
     index: int
     estimate_dzd: float | None = None
     range_dzd: list[float] | None = None
+    wide_range_dzd: list[float] | None = None
     model_version: str
     error: str | None = None
 
@@ -176,6 +215,7 @@ __all__ = [
     "AnomalyCheckResponse",
     "BatchPredictionItem",
     "BatchRequest",
+    "CatalogResponse",
     "Contribution",
     "DealResponse",
     "HealthResponse",

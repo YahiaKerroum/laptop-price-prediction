@@ -31,3 +31,5 @@ docs_for_claude/
 # --- OS ---
 .DS_Store
 Thumbs.db
+
+.venv/
